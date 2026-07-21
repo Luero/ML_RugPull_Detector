@@ -60,6 +60,22 @@ def add_contract_addresses(sheet, headings):
         sheet.cell(row=cell.row, column=address_column_number, value=address)
 
 
+# Check dataset for duplicates (rows with the same contract address)
+def check_duplicates_by_address (sheet):
+    headings = [c.value for c in sheet[1]]          # Repeated here, since a new heading ('Contract address') should be added on previous step
+    address_column_idx = headings.index('Contract address')
+    rows_per_address = {}
+    for row in sheet.iter_rows(min_row=2):
+        address = row[address_column_idx].value
+        if address is None:
+            continue
+        rows_per_address.setdefault(address, []).append(row[0].row)
+
+    for address, rows in rows_per_address.items():
+        if len(rows) > 1:
+            print(f"{rows} contain duplicated contract address {address}")
+
+
 # Save a workbook with amenmdnments to a new .xlxs file
 def save_workbook(workbook, output_file):
     workbook.save(output_file)
@@ -67,13 +83,15 @@ def save_workbook(workbook, output_file):
 
 # Combine all actions with a file together
 def main():
-    workbook, sheet = load_file("data/TM-RugPull.xlsx")
+    workbook, sheet = load_file("data/TM-RugPull_original.xlsx")
     headings = [c.value for c in sheet[1]]
     # Based on initial analysis
     chains_to_drop = {'FANTOM', 'CRONO', 'BASE', 'FTM', 'SNOW'}
     drop_chains(sheet, headings, chains_to_drop)
+    # Add contract addresses and check for duplicates based on addresses
     add_contract_addresses(sheet, headings)
-#    save_workbook(workbook, 'data/TM-RugPull_filtered_chains.xlsx')
+    check_duplicates_by_address(sheet)
+    save_workbook(workbook, 'data/TM-RugPull_prepared_for_enrichment.xlsx')
 
 
 if __name__ == "__main__":
