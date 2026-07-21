@@ -37,7 +37,7 @@ def save_workbook(workbook, output_file):
 
 
 if __name__ == "__main__":
-    workbook, sheet = load_file(".data/TM-RugPull.xlsx")
+    workbook, sheet = load_file("data/TM-RugPull.xlsx")
     chains_to_drop = {'FANTOM', 'CRONO', 'BASE', 'FTM', 'SNOW'}
     drop_chains(sheet, chains_to_drop)
 #    save_workbook(workbook, 'data/TM-RugPull_filtered_chains.xlsx')
