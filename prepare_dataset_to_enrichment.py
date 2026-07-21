@@ -1,7 +1,7 @@
 # Prepare dataset in .xlsx file for enrichment:
 # - remove chains with small amount of samples (based on initial analysis)
 # - extract contract address for further enrichment with on-chain features
-# - check dataset for identical rows by contract address
+# - check dataset for identical rows by contract address, print rows that require manual check before proceeding
 
 # OpenPyXL is used here to preserve hyperlinks in the file.
 # All actions with .xlsx are based on initial analysis (see Jupyter notebook "TM-RugPull initial analysis").
@@ -9,7 +9,7 @@
 
 # Reference: https://openpyxl.readthedocs.io/en/3.1/tutorial.html
 
-from openpyxl import load_workbook
+from openpyxl import load_workbook, Workbook
 import re
 
 
@@ -22,15 +22,33 @@ def load_file (file):
 
 
 # Drop rows where 'Blockchain' column contains value for networks that were excluded from further analysis
+# Returns a new re-created workbook to avoid a bug with preserving old hyperlinks when shifting rows due to deletion
 def drop_chains(sheet, headings, chains_to_drop):
     blockchain_column_idx = headings.index('Blockchain')
-    rows_to_drop = [row[0].row for row in sheet.iter_rows(min_row=2) if row[blockchain_column_idx].value in chains_to_drop]
 
-    for row_num in sorted(rows_to_drop, reverse=True):
-        sheet.delete_rows(row_num, 1)
+    # Create new workbook with new sheet
+    workbook_to_proceed = Workbook()
+    sheet_to_proceed = workbook_to_proceed.active
+    sheet_to_proceed.title = sheet.title
+
+    # Copy header row to new workbook
+    for col_idx, value in enumerate(headings, start=1):
+        sheet_to_proceed.cell(row=1, column=col_idx, value=value)
+
+    # Copy all rows that should remain
+    new_row_number = 2
+    for row in sheet.iter_rows(min_row=2):
+        if row[blockchain_column_idx].value in chains_to_drop:
+            continue
+        for col_idx, cell in enumerate(row, start=1):
+            new_cell = sheet_to_proceed.cell(row=new_row_number, column=col_idx, value=cell.value)
+            if cell.hyperlink is not None:
+                new_cell.hyperlink = cell.hyperlink.target
+        new_row_number += 1
 
     # Check how many rows remain (should be 990 for TM-RugPull dataset)
-    print(sheet.max_row - 1, "rows remaining")
+    print(new_row_number - 2, "rows remaining")
+    return workbook_to_proceed, sheet_to_proceed
 
 
 # Add contract addresses to all remaining rows in the file for further extraction of on-chain features
@@ -87,11 +105,11 @@ def main():
     headings = [c.value for c in sheet[1]]
     # Based on initial analysis
     chains_to_drop = {'FANTOM', 'CRONO', 'BASE', 'FTM', 'SNOW'}
-    drop_chains(sheet, headings, chains_to_drop)
+    new_workbook, new_sheet = drop_chains(sheet, headings, chains_to_drop)
     # Add contract addresses and check for duplicates based on addresses
-    add_contract_addresses(sheet, headings)
-    check_duplicates_by_address(sheet)
-    save_workbook(workbook, 'data/TM-RugPull_prepared_for_enrichment.xlsx')
+    add_contract_addresses(new_sheet, headings)
+    check_duplicates_by_address(new_sheet)
+    save_workbook(new_workbook, 'data/TM-RugPull_prepared_for_enrichment.xlsx')
 
 
 if __name__ == "__main__":
