@@ -109,7 +109,7 @@ def main():
     # Add contract addresses and check for duplicates based on addresses
     add_contract_addresses(new_sheet, headings)
     check_duplicates_by_address(new_sheet)
-    save_workbook(new_workbook, 'data/TM-RugPull_prepared_for_enrichment.xlsx')
+#    save_workbook(new_workbook, 'data/TM-RugPull_prepared_for_enrichment.xlsx')
 
 
 if __name__ == "__main__":
