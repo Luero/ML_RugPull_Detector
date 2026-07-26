@@ -11,14 +11,7 @@
 
 from openpyxl import load_workbook, Workbook
 import re
-
-
-# Load .xlsx file using OpenPyXL
-# Returns workbook and sheet from .xlcx file
-def load_file (file):
-    workbook = load_workbook(file)
-    sheet = workbook['Sheet1']
-    return workbook, sheet
+from xlxs_helpers_lib.io_helpers import load_file, save_workbook, get_headings
 
 
 # Drop rows where 'Blockchain' column contains value for networks that were excluded from further analysis
@@ -80,7 +73,7 @@ def add_contract_addresses(sheet, headings):
 
 # Check dataset for duplicates (rows with the same contract address)
 def check_duplicates_by_address (sheet):
-    headings = [c.value for c in sheet[1]]          # Repeated here, since a new heading ('Contract address') should be added on previous step
+    headings = get_headings(sheet)          # Repeated here, since a new heading ('Contract address') should be added on previous step
     address_column_idx = headings.index('Contract address')
     rows_per_address = {}
     for row in sheet.iter_rows(min_row=2):
@@ -94,22 +87,17 @@ def check_duplicates_by_address (sheet):
             print(f"{rows} contain duplicated contract address {address}")
 
 
-# Save a workbook with amenmdnments to a new .xlxs file
-def save_workbook(workbook, output_file):
-    workbook.save(output_file)
-
-
 # Combine all actions with a file together
 def main():
     workbook, sheet = load_file("data/TM-RugPull_original.xlsx")
-    headings = [c.value for c in sheet[1]]
+    headings = get_headings(sheet)
     # Based on initial analysis
     chains_to_drop = {'FANTOM', 'CRONO', 'BASE', 'FTM', 'SNOW'}
     new_workbook, new_sheet = drop_chains(sheet, headings, chains_to_drop)
     # Add contract addresses and check for duplicates based on addresses
     add_contract_addresses(new_sheet, headings)
     check_duplicates_by_address(new_sheet)
-#    save_workbook(new_workbook, 'data/TM-RugPull_prepared_for_enrichment.xlsx')
+    save_workbook(new_workbook, 'data/TM-RugPull_prepared_for_enrichment.xlsx')
 
 
 if __name__ == "__main__":
