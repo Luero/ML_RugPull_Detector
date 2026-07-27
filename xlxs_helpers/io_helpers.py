@@ -16,6 +16,7 @@ def load_file (file):
 # Save a workbook with amenmdnments to a new .xlxs file
 def save_workbook(workbook, output_file):
     workbook.save(output_file)
+    print(f"Saved to {output_file}")
 
 
 # Extract a header row as a list

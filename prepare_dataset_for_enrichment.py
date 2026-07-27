@@ -9,9 +9,14 @@
 
 # Reference: https://openpyxl.readthedocs.io/en/3.1/tutorial.html
 
-from openpyxl import load_workbook, Workbook
+from openpyxl import Workbook
 import re
-from xlxs_helpers_lib.io_helpers import load_file, save_workbook, get_headings
+from xlxs_helpers.io_helpers import load_file, save_workbook, get_headings
+
+
+# Constants, since this script is applicable only to original dataset file due to its structure (rows and columns)
+INPUT_FILE = "data/TM-RugPull_original.xlsx"
+OUTPUT_FILE = "data/TM-RugPull_prepared_for_enrichment.xlsx"
 
 
 # Drop rows where 'Blockchain' column contains value for networks that were excluded from further analysis
@@ -89,7 +94,7 @@ def check_duplicates_by_address (sheet):
 
 # Combine all actions with a file together
 def main():
-    workbook, sheet = load_file("data/TM-RugPull_original.xlsx")
+    workbook, sheet = load_file(INPUT_FILE)
     headings = get_headings(sheet)
     # Based on initial analysis
     chains_to_drop = {'FANTOM', 'CRONO', 'BASE', 'FTM', 'SNOW'}
@@ -97,7 +102,7 @@ def main():
     # Add contract addresses and check for duplicates based on addresses
     add_contract_addresses(new_sheet, headings)
     check_duplicates_by_address(new_sheet)
-    save_workbook(new_workbook, 'data/TM-RugPull_prepared_for_enrichment.xlsx')
+#    save_workbook(new_workbook, OUTPUT_FILE)               # Commented here, since once saved, the file was manually reviewd and some duplicates deleted
 
 
 if __name__ == "__main__":
