@@ -35,6 +35,13 @@ MEGANODE_BSC_URL = (f'https://bsc-mainnet.nodereal.io/v1/{NODEREAL_API_KEY}')
 CHAIN_IDS = {'ETH': 1, 'POLYGON': 137, 'ARBITRUM': 42161}
 
 
+# Time for snapshots in hours and approximation of average block time in seconds for each network
+TIME_FOR_SNAPSHOTS_HOURS = (1, 4, 12, 24)
+# For ETH: before April 2022 - 14.52, after - 12.07 (calculated based on official Etherscan data: https://etherscan.io/chart/blocktime)
+# TODO:find or caldulate for other blockchains
+
+
+
 # Files to read and write
 INPUT_FILE = '../data/TM-RugPull_with_project_period.xlsx'
 OUTPUT_FILE = '../data/TM-RugPull_with_holder_count_snapshots.xlsx'
@@ -113,8 +120,14 @@ def get_deployment_block_bsc(token_address):
     return data["blockNumber"]
 
 
+# Convert time window in hours into an approximate number of blocks for a particular chain
+def hours_to_blocks(chain, hours):
+    return int((hours * 3600) / AVG_BLOCK_TIME_SECONDS[chain])
+
+
 def main():
-    print(get_deployment_block('BSC', '0xc297020be32dc91bb24ce4cad116eb50e55ec5ae'))
+    print(get_deployment_block('ETH', '0x465e07d6028830124be2e4aa551fbe12805db0f5'))
+    print(hours_to_blocks('BSC', 24))
 
 
 if __name__ == "__main__":
