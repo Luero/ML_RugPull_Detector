@@ -13,7 +13,7 @@ load_dotenv()
 ETHERSCAN_API_KEY = os.getenv('ETHERSCAN_API_KEY')
 ETHERSCAN_BASE_URL = 'https://api.etherscan.io/v2/api'
 NODEREAL_API_KEY = os.getenv('NODEREAL_API_KEY')
-MEGANODE_BSC_URL = 'https://bsc-mainnet.nodereal.io/v1/' + NODEREAL_API_KEY
+MEGANODE_BSC_URL = (f'https://bsc-mainnet.nodereal.io/v1/{NODEREAL_API_KEY}'
 
 
 # IDs of chains supported by Etherscan and relevant for the dataset
