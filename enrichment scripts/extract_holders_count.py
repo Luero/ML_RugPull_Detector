@@ -42,6 +42,7 @@ OUTPUT_FILE = '../data/TM-RugPull_with_holder_count_snapshots.xlsx'
 
 # General function to query Etherscan's endpoints
 def query_etherscan(chain, params):
+    params = params.copy()
     params['apikey'] = ETHERSCAN_API_KEY
     params['chainid'] = CHAIN_IDS[chain]
     response = requests.get(ETHERSCAN_BASE_URL, params=params, timeout=30)
@@ -51,40 +52,69 @@ def query_etherscan(chain, params):
         return None
 
     data = response.json()
+    if data.get('status') not in ('1', 1):
+        print(f"API error: {data.get('message')}: {data.get('result')}")
+        return None
+
     return data
 
 
-# General function to query MegaNode endpoints
-def query_meganode(method, params):
-    payload = {'jsonrpc': '2.0', 'method': method, 'params': params, 'id': 1}
-    response = requests.post(MEGANODE_BSC_URL, json=payload, timeout=30)
-
-    if response.status_code != 200:
-        print(f"HTTP error {response.status_code} for {method}")
-        return None
-
-    data = response.json()
-    return data.get('result')
+# # General function to query MegaNode endpoints
+# def query_meganode(method, params):
+#     payload = {'jsonrpc': '2.0', 'method': method, 'params': params, 'id': 1}
+#     response = requests.post(MEGANODE_BSC_URL, json=payload, timeout=30)
+#
+#     if response.status_code != 200:
+#         print(f"HTTP error {response.status_code} for {method}")
+#         return None
+#
+#     data = response.json()
+#     if 'error' in data:
+#         print(f"Error for {method}: {data['error']}")
+#         return None
+#
+#     return data.get('result')
 
 
 # Obtain deployment block number using token contract address
-# https://docs.etherscan.io/api-reference/endpoint/getcontractcreation
-def get_deployment_block_etherscan(chain, token_address):
+def get_deployment_block(chain, token_address):
     if chain == 'BSC':
-        print("BSC requires a separate function")                 # A placeholder for a separate BSC related function
+        block_number = get_deployment_block_bsc(token_address)
+    else:
+        # https://docs.etherscan.io/api-reference/endpoint/getcontractcreation
+        data = query_etherscan(chain, {'module': 'contract', 'action': 'getcontractcreation', 'contractaddresses': token_address})
+        if data is None or not data.get('result'):
+            print(f"Could not get data for {token_address}")
+            return None
+        block_number = int(data['result'][0]['blockNumber'])
 
-    data = query_etherscan(chain, {'module': 'contract', 'action': 'getcontractcreation', 'contractaddresses': token_address})
+    return block_number
 
-    if data is None or not data.get('result'):
-        print(f"Could not get data for {token_address}")
+
+# Obtain deployment block using token contract address for BSC tokens
+# https://docs.nodereal.io/reference/nr_getcontractcreationtransaction
+def get_deployment_block_bsc(token_address):
+    payload = {'jsonrpc': '2.0', 'method': 'nr_getContractCreationTransaction', 'params': [token_address], 'id': 1}
+    response = requests.post(MEGANODE_BSC_URL, json=payload, timeout=30)
+    if response.status_code != 200:
+        print(f"HTTP error {response.status_code} for {token_address}")
         return None
 
-    return int(data['result'][0]['blockNumber'])
+    result = response.json()
+    if "error" in result:
+        print(result["error"])
+        return None
 
+    data = result.get("result")
+    if data is None:
+        print("No result")
+        return None
+
+    return data["blockNumber"]
 
 
 def main():
-    print(get_deployment_block_etherscan('ETH', '0xcbdcd3815b5f975e1a2c944a9b2cd1c985a1cb7f'))
+    print(get_deployment_block('BSC', '0xc297020be32dc91bb24ce4cad116eb50e55ec5ae'))
 
 
 if __name__ == "__main__":
