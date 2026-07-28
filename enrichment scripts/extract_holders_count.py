@@ -67,9 +67,24 @@ def query_meganode(method, params):
     return data.get('result')
 
 
+# Obtain deployment block number using token contract address
+# https://docs.etherscan.io/api-reference/endpoint/getcontractcreation
+def get_deployment_block_etherscan(chain, token_address):
+    if chain == 'BSC':
+        print("BSC requires a separate function")                 # A placeholder for a separate BSC related function
+
+    data = query_etherscan(chain, {'module': 'contract', 'action': 'getcontractcreation', 'contractaddresses': token_address})
+
+    if data is None or not data.get('result'):
+        print(f"Could not get data for {token_address}")
+        return None
+
+    return int(data['result'][0]['blockNumber'])
+
+
 
 def main():
-    print(query_meganode('eth_blockNumber', []))
+    print(get_deployment_block_etherscan('ETH', '0xcbdcd3815b5f975e1a2c944a9b2cd1c985a1cb7f'))
 
 
 if __name__ == "__main__":
