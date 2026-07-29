@@ -10,14 +10,13 @@
 # (5) counts addresses with positive remaining balances
 # (6) adds relevant columns with number of holders on a particular time to .xlxs file
 
-# TODO: check my theory works in practice
-
 # Etherscan API key is required for Ethereum, Arbitrum and Polygon tokens
 # MegaNode API key is required for BSC tokens (since Etherscan free plan does not support it) (https://docs.etherscan.io/supported-chains)
 
 
 import os
 from datetime import datetime, timezone
+import math
 
 import requests
 from dotenv import load_dotenv
@@ -245,16 +244,33 @@ def count_holders_to_target_block(logs, to_block):
     return sum(1 for balance in balances.values() if balance > 0)
 
 
+# Per-token snapshot extraction
+def get_holders_snapshots(chain, token_address):
+    if chain == 'ARBITRUM':
+        return {f"Holders_{h}h": math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}            # https://www.w3schools.com/python/ref_math_nan.asp
+
+    deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, token_address)
+    if deployment_block is None:
+        return {f"Holders_{h}h": math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}
+
+    block_offsets = {h: hours_to_blocks(chain, h, deployment_timestamp) for h in TIME_FOR_SNAPSHOTS_HOURS}
+    max_offset = max(offset for offset in block_offsets.values() if offset is not None)
+
+    logs = get_transfer_logs(chain, token_address, int(deployment_block), int(deployment_block) + max_offset)
+    logs.sort(key=get_block_number_from_log)
+
+    snapshots = {}
+    for h in TIME_FOR_SNAPSHOTS_HOURS:
+        offset = block_offsets[h]
+        to_block = int(deployment_block) + offset
+        snapshots[f"Holders_{h}h"] = count_holders_to_target_block(logs, to_block)
+
+    return snapshots
 
 
 def main():
-    from_block, timestamp = get_deployment_block_and_timestamp('ETH', '0x6daa2195d0a67c23b4976bd388736c56e71c3f39')
-    print(from_block, timestamp)
-    block_offset = hours_to_blocks('ETH', 24, timestamp)
-    to_block = from_block + block_offset
-    logs = get_transfer_logs('ETH', '0x6daa2195d0a67c23b4976bd388736c56e71c3f39', from_block, to_block)
-    sum = count_holders_to_target_block(logs, to_block)
-    print(sum)
+    snapshots = get_holders_snapshots('POLYGON', '0x0022167E3B9f409E1FF6Bb206EC6B276C372B277')
+    print(snapshots)
 
 
 
