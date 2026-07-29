@@ -16,6 +16,8 @@
 
 
 import os
+from datetime import datetime, timezone
+
 import requests
 from dotenv import load_dotenv
 
@@ -25,20 +27,36 @@ load_dotenv()
 # https://docs.etherscan.io/api-reference
 ETHERSCAN_API_KEY = os.getenv('ETHERSCAN_API_KEY')
 ETHERSCAN_BASE_URL = 'https://api.etherscan.io/v2/api'
+
 # https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
 NODEREAL_API_KEY = os.getenv('NODEREAL_API_KEY')
 MEGANODE_BSC_URL = (f'https://bsc-mainnet.nodereal.io/v1/{NODEREAL_API_KEY}')
-
 
 # IDs of chains supported by Etherscan and relevant for the dataset
 # Reference: https://docs.etherscan.io/supported-chains
 CHAIN_IDS = {'ETH': 1, 'POLYGON': 137, 'ARBITRUM': 42161}
 
-
 # Time for snapshots in hours and approximation of average block time in seconds for each network
 TIME_FOR_SNAPSHOTS_HOURS = (1, 4, 12, 24)
-# For ETH: before April 2022 - 14.52, after - 12.07 (calculated based on official Etherscan data: https://etherscan.io/chart/blocktime)
-# TODO:find or caldulate for other blockchains
+
+# For ETH: before September 2022 - 14.52 sec, after - 12.07 sec (mean calculated based on official Etherscan data: https://etherscan.io/chart/blocktime)
+# For BSC: before April 2025 - 3.01 sec (mean calculated based on official Bscscan data: https://bscscan.com/chart/blocktime)
+# For Polygon: before May 2026 - 2.17 sec (mean calculated based on official Polygonscan data: https://polygonscan.com/chart/blocktime)
+# For Arbitrum: no fixed block time, it depends on demand, thus, approximation could spoil results (https://docs.arbitrum.io/arbitrum-essentials/arbitrum-vs-ethereum/block-numbers-and-time)
+# TODO: try binary search for blocks lookup ??
+# Starting dates are not real chains' genesis dates, just a placeholder for 'very early date'
+BLOCK_TIME_PERIODS = {
+    'ETH': (
+        (datetime(2000, 7, 30, tzinfo=timezone.utc), datetime(2022, 9, 15, tzinfo=timezone.utc), 14.52),
+        (datetime(2022, 9, 15, tzinfo=timezone.utc), datetime(2100, 1, 1, tzinfo=timezone.utc), 12.07),
+    ),
+    'BSC': (
+        (datetime(2000, 4, 20, tzinfo=timezone.utc), datetime(2025, 4, 1, tzinfo=timezone.utc), 3.01),
+    ),
+    'POLYGON': (
+        (datetime(2000, 5, 30, tzinfo=timezone.utc), datetime(2026, 5, 5, tzinfo=timezone.utc), 2.17),
+    ),
+}
 
 
 
@@ -84,50 +102,63 @@ def query_etherscan(chain, params):
 
 
 # Obtain deployment block number using token contract address
-def get_deployment_block(chain, token_address):
+def get_deployment_block_and_timestamp(chain, token_address):
     if chain == 'BSC':
-        block_number = get_deployment_block_bsc(token_address)
+        return get_deployment_block_and_timestamp_bsc(token_address)
     else:
         # https://docs.etherscan.io/api-reference/endpoint/getcontractcreation
         data = query_etherscan(chain, {'module': 'contract', 'action': 'getcontractcreation', 'contractaddresses': token_address})
         if data is None or not data.get('result'):
             print(f"Could not get data for {token_address}")
-            return None
-        block_number = int(data['result'][0]['blockNumber'])
+            return None, None
+        result = data['result'][0]
 
-    return block_number
+        return int(result['blockNumber']), int(result['timestamp'])
 
 
 # Obtain deployment block using token contract address for BSC tokens
 # https://docs.nodereal.io/reference/nr_getcontractcreationtransaction
-def get_deployment_block_bsc(token_address):
+def get_deployment_block_and_timestamp_bsc(token_address):
     payload = {'jsonrpc': '2.0', 'method': 'nr_getContractCreationTransaction', 'params': [token_address], 'id': 1}
     response = requests.post(MEGANODE_BSC_URL, json=payload, timeout=30)
     if response.status_code != 200:
         print(f"HTTP error {response.status_code} for {token_address}")
-        return None
+        return None, None
 
     result = response.json()
     if "error" in result:
         print(result["error"])
-        return None
+        return None, None
 
     data = result.get("result")
     if data is None:
         print("No result")
-        return None
+        return None, None
 
-    return data["blockNumber"]
+    return data["blockNumber"], data["timestamp"]
+
+
+# Extract block time for the token's deployment timestamp
+def get_block_time_seconds(chain, deployment_timestamp):
+    deployment_datetime = datetime.fromtimestamp(int(deployment_timestamp), tz=timezone.utc)
+    for start, end, block_time in BLOCK_TIME_PERIODS[chain]:
+        if start <= deployment_datetime < end:
+            return block_time
+    return None
 
 
 # Convert time window in hours into an approximate number of blocks for a particular chain
-def hours_to_blocks(chain, hours):
-    return int((hours * 3600) / AVG_BLOCK_TIME_SECONDS[chain])
+def hours_to_blocks(chain, hours, deployment_timestamp):
+    block_time = get_block_time_seconds(chain, deployment_timestamp)
+    if block_time is None:
+        return None
+    return int((hours * 3600) / block_time)
 
 
 def main():
-    print(get_deployment_block('ETH', '0x465e07d6028830124be2e4aa551fbe12805db0f5'))
-    print(hours_to_blocks('BSC', 24))
+    block, timestamp = get_deployment_block_and_timestamp('POLYGON', '0x2237c1299473b80c5f482e4974d8a0ecc318f775')
+    print(block, timestamp)
+    print(hours_to_blocks('POLYGON', 24, timestamp))
 
 
 if __name__ == "__main__":
