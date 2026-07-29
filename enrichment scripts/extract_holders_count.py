@@ -8,11 +8,12 @@
 # (3) extracts all transfer events between deployment and snapshot blocks (the last snapshot block is used to fetch logs only once and then use them from memory)
 # (4) replays transfers in order, maintains a running balance per address and takes a snapshot debit_from_addr(), credit_to_addr()
 # (5) counts addresses with positive remaining balances
+# (6) adds relevant columns with number of holders on a particular time to .xlxs file
 
 # TODO: check my theory works in practice
 
 # Etherscan API key is required for Ethereum, Arbitrum and Polygon tokens
-# MegaNode API key is required for BSC tokens (since Etherscan free plan does not support it)
+# MegaNode API key is required for BSC tokens (since Etherscan free plan does not support it) (https://docs.etherscan.io/supported-chains)
 
 
 import os
@@ -195,17 +196,66 @@ def get_transfer_logs(chain, token_address, from_block, to_block):
             all_logs.extend(data.get('result', []) if data else [])
 
         current_block = chunk_end + 1
-    print(all_logs)
 
     return all_logs
+
+
+# Extract a block number from log
+def get_block_number_from_log(log):
+    block_number = log['blockNumber']
+    return int(block_number, 16) if isinstance(block_number, str) else int(block_number)
+
+
+# Extract transfer value from log
+def get_transfer_value_from_log(log):
+    return int(log['data'], 16)
+
+
+# Extract address from topic value
+def get_address_from_topic(topic):
+    return '0x' + topic[-40:]
+
+
+# Replay debit transactions from address
+def debit_from_address(balances, address, value):
+    balances[address] = balances.get(address, 0) - value
+
+
+# Replay credit transactions from address
+# Raw values are left-padded, with zeros upfront, since they are 32-bytes, and addresses are only 20 bytes
+def credit_to_address(balances, address, value):
+    balances[address] = balances.get(address, 0) + value
+
+
+# Replay transfers in block order up to target_block and count addresses with positive balances
+def count_holders_to_target_block(logs, to_block):
+    balances = {}
+
+    for log in logs:
+        if get_block_number_from_log(log) > to_block:
+            break
+
+        from_address = get_address_from_topic(log['topics'][1])
+        to_address = get_address_from_topic(log['topics'][2])
+        value = get_transfer_value_from_log(log)
+
+        debit_from_address(balances, from_address, value)
+        credit_to_address(balances, to_address, value)
+
+    return sum(1 for balance in balances.values() if balance > 0)
+
+
 
 
 def main():
     from_block, timestamp = get_deployment_block_and_timestamp('ETH', '0x6daa2195d0a67c23b4976bd388736c56e71c3f39')
     print(from_block, timestamp)
-    block_offset = hours_to_blocks('ETH', 1, timestamp)
+    block_offset = hours_to_blocks('ETH', 24, timestamp)
     to_block = from_block + block_offset
-    get_transfer_logs('ETH', '0x6daa2195d0a67c23b4976bd388736c56e71c3f39', from_block, to_block)
+    logs = get_transfer_logs('ETH', '0x6daa2195d0a67c23b4976bd388736c56e71c3f39', from_block, to_block)
+    sum = count_holders_to_target_block(logs, to_block)
+    print(sum)
+
 
 
 if __name__ == "__main__":
