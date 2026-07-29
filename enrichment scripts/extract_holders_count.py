@@ -34,6 +34,7 @@ MEGANODE_BSC_URL = (f'https://bsc-mainnet.nodereal.io/v1/{NODEREAL_API_KEY}')
 
 # IDs of chains supported by Etherscan and relevant for the dataset
 # Reference: https://docs.etherscan.io/supported-chains
+# TODO: Arbitrum???
 CHAIN_IDS = {'ETH': 1, 'POLYGON': 137, 'ARBITRUM': 42161}
 
 # Time for snapshots in hours and approximation of average block time in seconds for each network
@@ -58,6 +59,12 @@ BLOCK_TIME_PERIODS = {
     ),
 }
 
+# https://www.4byte.directory/event-signatures/?bytes_signature=0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+TRANSFER_EVENT_HASH = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+# Unified across all chains, suits for the smallest available chunk (ETH)
+LOG_BLOCK_CHUNK_SIZE = 1000
+# Etherscan free-tier limit on records per getLogs call
+LOG_RESULT_LIMIT = 1000
 
 
 # Files to read and write
@@ -78,27 +85,30 @@ def query_etherscan(chain, params):
 
     data = response.json()
     if data.get('status') not in ('1', 1):
+        # A valid empty result, not an error, in holders count will be treated as 0 holders
+        if data.get('message') == 'No records found':
+            return data
         print(f"API error: {data.get('message')}: {data.get('result')}")
         return None
 
     return data
 
 
-# # General function to query MegaNode endpoints
-# def query_meganode(method, params):
-#     payload = {'jsonrpc': '2.0', 'method': method, 'params': params, 'id': 1}
-#     response = requests.post(MEGANODE_BSC_URL, json=payload, timeout=30)
-#
-#     if response.status_code != 200:
-#         print(f"HTTP error {response.status_code} for {method}")
-#         return None
-#
-#     data = response.json()
-#     if 'error' in data:
-#         print(f"Error for {method}: {data['error']}")
-#         return None
-#
-#     return data.get('result')
+# General function to query MegaNode endpoints
+def query_meganode(method, params):
+    payload = {'jsonrpc': '2.0', 'method': method, 'params': params, 'id': 1}
+    response = requests.post(MEGANODE_BSC_URL, json=payload, timeout=30)
+
+    if response.status_code != 200:
+        print(f"HTTP error {response.status_code} for {method}")
+        return None
+
+    data = response.json()
+    if 'error' in data:
+        print(f"Error for {method}: {data['error']}")
+        return None
+
+    return data.get('result')
 
 
 # Obtain deployment block number using token contract address
@@ -155,10 +165,47 @@ def hours_to_blocks(chain, hours, deployment_timestamp):
     return int((hours * 3600) / block_time)
 
 
+# Extract all transfer event logs between from_block and to_block, chunked due to API limits
+def get_transfer_logs(chain, token_address, from_block, to_block):
+    all_logs = []
+    current_block = from_block
+
+    if from_block > to_block:
+        print(f"From_block ({from_block}) > to_block ({to_block})")
+        return []
+
+    while current_block <= to_block:
+        chunk_end = min(current_block + LOG_BLOCK_CHUNK_SIZE, to_block)
+
+        if chain == 'BSC':
+            # https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
+            result = query_meganode('eth_getLogs', [{
+                'address': token_address,
+                'topics': [TRANSFER_EVENT_HASH],
+                'fromBlock': hex(current_block),
+                'toBlock': hex(chunk_end)
+            }])
+            all_logs.extend(result if result else [])
+        else:
+            data = query_etherscan(chain, {
+                'module': 'logs', 'action': 'getLogs',
+                'address': token_address, 'topic0': TRANSFER_EVENT_HASH,
+                'fromBlock': current_block, 'toBlock': chunk_end
+            })
+            all_logs.extend(data.get('result', []) if data else [])
+
+        current_block = chunk_end + 1
+    print(all_logs)
+
+    return all_logs
+
+
 def main():
-    block, timestamp = get_deployment_block_and_timestamp('POLYGON', '0x2237c1299473b80c5f482e4974d8a0ecc318f775')
-    print(block, timestamp)
-    print(hours_to_blocks('POLYGON', 24, timestamp))
+    from_block, timestamp = get_deployment_block_and_timestamp('ETH', '0x6daa2195d0a67c23b4976bd388736c56e71c3f39')
+    print(from_block, timestamp)
+    block_offset = hours_to_blocks('ETH', 1, timestamp)
+    to_block = from_block + block_offset
+    get_transfer_logs('ETH', '0x6daa2195d0a67c23b4976bd388736c56e71c3f39', from_block, to_block)
 
 
 if __name__ == "__main__":
