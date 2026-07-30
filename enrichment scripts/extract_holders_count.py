@@ -35,7 +35,6 @@ MEGANODE_BSC_URL = (f'https://bsc-mainnet.nodereal.io/v1/{NODEREAL_API_KEY}')
 
 # IDs of chains supported by Etherscan and relevant for the dataset
 # Reference: https://docs.etherscan.io/supported-chains
-# TODO: Arbitrum???
 CHAIN_IDS = {'ETH': 1, 'POLYGON': 137, 'ARBITRUM': 42161}
 
 # Time for snapshots in hours and approximation of average block time in seconds for each network
@@ -45,7 +44,6 @@ TIME_FOR_SNAPSHOTS_HOURS = (1, 4, 12, 24)
 # For BSC: before April 2025 - 3.01 sec (mean calculated based on official Bscscan data: https://bscscan.com/chart/blocktime)
 # For Polygon: before May 2026 - 2.17 sec (mean calculated based on official Polygonscan data: https://polygonscan.com/chart/blocktime)
 # For Arbitrum: no fixed block time, it depends on demand, thus, approximation could spoil results (https://docs.arbitrum.io/arbitrum-essentials/arbitrum-vs-ethereum/block-numbers-and-time)
-# TODO: try binary search for blocks lookup ??
 # Starting dates are not real chains' genesis dates, just a placeholder for 'very early date'
 BLOCK_TIME_PERIODS = {
     'ETH': (
@@ -59,6 +57,7 @@ BLOCK_TIME_PERIODS = {
         (datetime(2000, 5, 30, tzinfo=timezone.utc), datetime(2026, 5, 5, tzinfo=timezone.utc), 2.17),
     ),
 }
+LATEST_ARBITRUM_BLOCK = None
 
 # https://www.4byte.directory/event-signatures/?bytes_signature=0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
 TRANSFER_EVENT_HASH = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
@@ -259,7 +258,10 @@ def get_block_number_from_log(log):
 
 # Extract transfer value from log
 def get_transfer_value_from_log(log):
-    return int(log['data'], 16)
+    data = log['data']
+    if data in ('0x', '0X', ''):
+        return 0
+    return int(data, 16)
 
 
 # Extract address from topic value
@@ -278,22 +280,39 @@ def credit_to_address(balances, address, value):
     balances[address] = balances.get(address, 0) + value
 
 
-# Replay transfers in block order up to target_block and count addresses with positive balances
-def count_holders_to_target_block(logs, to_block):
+# Replay transfers in block order up to each target_block and count addresses with positive balances
+def count_holders_for_snapshots(logs, target_blocks):
     balances = {}
+    snapshots = {}
+    sorted_target_blocks = sorted(target_blocks.items(), key=lambda x: x[1])
+    # Snapshot to look next
+    current_target = 0
 
+    # Replays all logs and stores snapshots on relevant time windows
     for log in logs:
-        if get_block_number_from_log(log) > to_block:
-            break
+        current_block = get_block_number_from_log(log)
+        # Save a snapshot for a target block that was passed
+        while current_target < len(sorted_target_blocks) and current_block > sorted_target_blocks[current_target][1]:
+            snapshot_hours = sorted_target_blocks[current_target][0]
+            snapshots[f"Holders_{snapshot_hours}h"] = sum(1 for balance in balances.values() if balance > 0)
+            current_target += 1
 
         from_address = get_address_from_topic(log['topics'][1])
         to_address = get_address_from_topic(log['topics'][2])
         value = get_transfer_value_from_log(log)
+        if value is None:
+            continue
 
         debit_from_address(balances, from_address, value)
         credit_to_address(balances, to_address, value)
 
-    return sum(1 for balance in balances.values() if balance > 0)
+    # Create snapshots if there were no mo transfers before next target snapshot
+    while current_target < len(sorted_target_blocks):
+        snapshot_hours = sorted_target_blocks[current_target][0]
+        snapshots[f"Holders_{snapshot_hours}h"] = sum(1 for balance in balances.values() if balance > 0)
+        current_target += 1
+
+    return snapshots
 
 
 # Per-token snapshot extraction
@@ -303,7 +322,9 @@ def get_holders_snapshots(chain, token_address):
         return {f"Holders_{h}h": math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}            # https://www.w3schools.com/python/ref_math_nan.asp
 
     if chain == 'ARBITRUM':
-        latest_block = get_latest_block(chain)
+        global LATEST_ARBITRUM_BLOCK
+        if LATEST_ARBITRUM_BLOCK is None:
+            LATEST_ARBITRUM_BLOCK = get_latest_block(chain)
         # Blocks with timestamp closest to snapshots intervals
         target_blocks = {h: find_block_by_timestamp(chain, deployment_timestamp + h * 3600, deployment_block, latest_block) for h in TIME_FOR_SNAPSHOTS_HOURS}
     else:
@@ -319,16 +340,13 @@ def get_holders_snapshots(chain, token_address):
         print(f"Log failure for {token_address}")
         return {f"Holders_{h}h": math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}
     logs.sort(key=get_block_number_from_log)
-    snapshots = {}
-    for h in TIME_FOR_SNAPSHOTS_HOURS:
-        to_block = target_blocks.get(h)
-        snapshots[f"Holders_{h}h"] = count_holders_to_target_block(logs, to_block)
+    snapshots = count_holders_for_snapshots(logs, target_blocks)
 
     return snapshots
 
 
 def main():
-    snapshots = get_holders_snapshots('ARBITRUM', '0xfc5a1a6eb076a2c7ad06ed22c90d7e710e35ad0a')
+    snapshots = get_holders_snapshots('ETH', '0xF210D5d9DCF958803C286A6f8E278e4aC78e136E')
     print(snapshots)
 
 
