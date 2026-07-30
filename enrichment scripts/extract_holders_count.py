@@ -21,6 +21,7 @@ import math
 import requests
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 # Sources of data
@@ -148,6 +149,42 @@ def get_deployment_block_and_timestamp_bsc(token_address):
     return data["blockNumber"], data["timestamp"]
 
 
+# Get latest block number for a chain, used for Arbitrum tokens as the binary search upper bound
+# https://docs.etherscan.io/api-reference/endpoint/ethblocknumber
+def get_latest_block(chain):
+    data = query_etherscan(chain, {'module': 'proxy', 'action': 'eth_blockNumber'})
+    if data is None:
+        return None
+    return int(data['result'], 16)
+
+
+# Binary search for Arbitrum tokens: search for block closest to to_timestamp
+def find_block_by_timestamp(chain, to_timestamp, low_block, high_block):
+    closest_block = low_block
+
+    while low_block <= high_block:
+        mid_block = (low_block + high_block) // 2
+        mid_timestamp = get_block_timestamp(chain, mid_block)
+        if mid_timestamp is None:
+            break
+        if mid_timestamp <= to_timestamp:
+            closest_block = mid_block
+            low_block = mid_block + 1
+        else:
+            high_block = mid_block - 1
+
+    return closest_block
+
+
+# Get a block's timestamp via Etherscan
+# https://docs.etherscan.io/api-reference/endpoint/ethgetblockbynumber
+def get_block_timestamp(chain, block_number):
+    data = query_etherscan(chain, {'module': 'proxy', 'action': 'eth_getBlockByNumber', 'tag': hex(block_number), 'boolean': 'false'})
+    if data is None:
+        return None
+    return int(data['result']['timestamp'], 16)
+
+
 # Extract block time for the token's deployment timestamp
 def get_block_time_seconds(chain, deployment_timestamp):
     deployment_datetime = datetime.fromtimestamp(int(deployment_timestamp), tz=timezone.utc)
@@ -246,30 +283,34 @@ def count_holders_to_target_block(logs, to_block):
 
 # Per-token snapshot extraction
 def get_holders_snapshots(chain, token_address):
-    if chain == 'ARBITRUM':
-        return {f"Holders_{h}h": math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}            # https://www.w3schools.com/python/ref_math_nan.asp
-
     deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, token_address)
     if deployment_block is None:
-        return {f"Holders_{h}h": math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}
+        return {f"Holders_{h}h": math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}            # https://www.w3schools.com/python/ref_math_nan.asp
 
-    block_offsets = {h: hours_to_blocks(chain, h, deployment_timestamp) for h in TIME_FOR_SNAPSHOTS_HOURS}
-    max_offset = max(offset for offset in block_offsets.values() if offset is not None)
+    if chain == 'ARBITRUM':
+        latest_block = get_latest_block(chain)
+        # Blocks with timestamp closest to snapshots intervals
+        target_blocks = {h: find_block_by_timestamp(chain, deployment_timestamp + h * 3600, deployment_block, latest_block) for h in TIME_FOR_SNAPSHOTS_HOURS}
+    else:
+        # Approximate number of blocks for each snapshot interval
+        block_offsets = {h: hours_to_blocks(chain, h, deployment_timestamp) for h in TIME_FOR_SNAPSHOTS_HOURS}
+        # Blocks calculated from deployment block + offset relevant for a particular chain
+        target_blocks = {h: deployment_block + offset for h, offset in block_offsets.items() if offset is not None}
 
-    logs = get_transfer_logs(chain, token_address, int(deployment_block), int(deployment_block) + max_offset)
+    # Upper boundary for getting and replaying logs
+    max_block = max(target_blocks.values())
+    logs = get_transfer_logs(chain, token_address, int(deployment_block), int(deployment_block) + max_block)
     logs.sort(key=get_block_number_from_log)
-
     snapshots = {}
     for h in TIME_FOR_SNAPSHOTS_HOURS:
-        offset = block_offsets[h]
-        to_block = int(deployment_block) + offset
+        to_block = target_blocks.get(h)
         snapshots[f"Holders_{h}h"] = count_holders_to_target_block(logs, to_block)
 
     return snapshots
 
 
 def main():
-    snapshots = get_holders_snapshots('POLYGON', '0x0022167E3B9f409E1FF6Bb206EC6B276C372B277')
+    snapshots = get_holders_snapshots('ARBITRUM', '0xb50721bcf8d664c30412cfbc6cf7a15145234ad1')
     print(snapshots)
 
 
