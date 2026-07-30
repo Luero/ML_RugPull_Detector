@@ -61,11 +61,12 @@ LATEST_ARBITRUM_BLOCK = None
 
 # https://www.4byte.directory/event-signatures/?bytes_signature=0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
 TRANSFER_EVENT_HASH = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
-# Unified across all chains, suits for the smallest available chunk (ETH)
-LOG_BLOCK_CHUNK_SIZE = 1000
-# Etherscan free-tier limit on records per getLogs call
-LOG_RESULT_LIMIT = 1000
 
+# Etherscan free-tier limit on records per getLogs call: https://docs.etherscan.io/changelog
+ETH_LOG_RESULT_LIMIT = 1000
+# NodeReal limitations for block range size and number of records returned: https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
+NODEREAL_LOG_RESULT_LIMIT = 50000
+NODEREAL_BLOCK_RANGE_SIZE = 49000
 
 # Files to read and write
 INPUT_FILE = '../data/TM-RugPull_with_project_period.xlsx'
@@ -212,42 +213,71 @@ def hours_to_blocks(chain, hours, deployment_timestamp):
 # Extract all transfer event logs between from_block and to_block, chunked due to API limits
 def get_transfer_logs(chain, token_address, from_block, to_block):
     all_logs = []
-    current_block = from_block
     had_failure = False
 
     if from_block > to_block:
         print(f"From_block ({from_block}) > to_block ({to_block})")
         return [], had_failure
 
+    if chain != 'BSC':
+        return get_transfer_logs_etherscan(chain, token_address, from_block, to_block)
+
+    current_block = from_block
     while current_block <= to_block:
-        chunk_end = min(current_block + LOG_BLOCK_CHUNK_SIZE, to_block)
-
-        if chain == 'BSC':
-            # https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
-            result = query_meganode('eth_getLogs', [{
-                'address': token_address,
-                'topics': [TRANSFER_EVENT_HASH],
-                'fromBlock': hex(current_block),
-                'toBlock': hex(chunk_end)
-            }])
-            if result is None:
-                had_failure = True
-            else:
-                all_logs.extend(result)
-        else:
-            data = query_etherscan(chain, {
-                'module': 'logs', 'action': 'getLogs',
-                'address': token_address, 'topic0': TRANSFER_EVENT_HASH,
-                'fromBlock': current_block, 'toBlock': chunk_end
-            })
-            if data is None:
-                had_failure = True
-            else:
-                all_logs.extend(data.get('result', []))
-
+        chunk_end = min(current_block + NODEREAL_BLOCK_RANGE_SIZE, to_block)
+        chunk_logs, chunk_failed = get_transfer_logs_bsc(token_address, current_block, chunk_end)
+        all_logs.extend(chunk_logs)
+        had_failure = had_failure or chunk_failed
         current_block = chunk_end + 1
 
     return all_logs, had_failure
+
+
+# Get one chunk from Etherscan and use paginating if chunk hits LOG_RESULT_LIMIT
+# https://docs.etherscan.io/changelog
+def get_transfer_logs_etherscan(chain, token_address, from_block, to_block):
+    chunk_logs = []
+    page = 1
+    while True:
+        data = query_etherscan(chain, {
+            'module': 'logs', 'action': 'getLogs',
+            'address': token_address, 'topic0': TRANSFER_EVENT_HASH,
+            'fromBlock': from_block, 'toBlock': to_block,
+            'page': page, 'offset': ETH_LOG_RESULT_LIMIT
+        })
+        if data is None:
+            return chunk_logs, True
+        page_logs = data.get('result', [])
+        chunk_logs.extend(page_logs)
+        if len(page_logs) < ETH_LOG_RESULT_LIMIT:
+            break
+        page += 1
+
+    return chunk_logs, False
+
+
+# Get one chunk from NodeReal (for BSC tokens) considering API result limitations
+# If limit is hit, function divides results and treats each half separately
+# https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
+def get_transfer_logs_bsc(token_address, from_block, to_block):
+    result = query_meganode('eth_getLogs', [{
+        'address': token_address,
+        'topics': [TRANSFER_EVENT_HASH],
+        'fromBlock': hex(from_block),
+        'toBlock': hex(to_block)
+    }])
+
+    if result is None:
+        return [], True
+
+    # Assumes NodeReal current limit of 50,000 records. If API changes, require revision
+    if len(result) <= NODEREAL_LOG_RESULT_LIMIT or from_block == to_block:
+        return result, False
+
+    mid_block = (from_block + to_block) // 2
+    left_logs, left_failure = get_transfer_logs_bsc(token_address, from_block, mid_block)
+    right_logs, right_failure = get_transfer_logs_bsc(token_address, mid_block + 1, to_block)
+    return left_logs + right_logs, left_failure or right_failure
 
 
 # Extract a block number from log
@@ -308,7 +338,7 @@ def count_holders_for_snapshots(logs, target_blocks):
         to_address = get_address_from_topic(log['topics'][2])
         value = get_transfer_value_from_log(log)
         if value is None:
-            print(f"Token {log['address']} skipped: ""unsupported Transfer event.")
+            print(f"Token {log['address']} skipped: unsupported Transfer event.")
             return None
 
         debit_from_address(balances, from_address, value)
@@ -358,9 +388,8 @@ def get_holders_snapshots(chain, token_address):
 
 
 def main():
-    snapshots = get_holders_snapshots('ARBITRUM', '0x45d9831d8751b2325f3dbf48db748723726e1c8c')
+    snapshots = get_holders_snapshots('POLYGON', '0x16dfb898cf7029303c2376031392cb9bac450f94')
     print(snapshots)
-
 
 
 if __name__ == "__main__":
