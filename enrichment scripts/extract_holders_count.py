@@ -75,6 +75,7 @@ OUTPUT_FILE = '../data/TM-RugPull_with_holder_count_snapshots.xlsx'
 
 # General function to query Etherscan's endpoints
 def query_etherscan(chain, params):
+    data_not_found_messages = {'No records found', 'No data found', 'No transactions found'}
     params = params.copy()
     params['apikey'] = ETHERSCAN_API_KEY
     params['chainid'] = CHAIN_IDS[chain]
@@ -85,9 +86,16 @@ def query_etherscan(chain, params):
         return None
 
     data = response.json()
+
+    if params.get('module') == 'proxy':
+        if 'error' in data:
+            print(f"Proxy API error: {data['error']}")
+            return None
+        return data
+
     if data.get('status') not in ('1', 1):
         # A valid empty result, not an error, in holders count will be treated as 0 holders
-        if data.get('message') == 'No records found':
+        if data.get('message') in data_not_found_messages:
             return data
         print(f"API error: {data.get('message')}: {data.get('result')}")
         return None
@@ -206,10 +214,11 @@ def hours_to_blocks(chain, hours, deployment_timestamp):
 def get_transfer_logs(chain, token_address, from_block, to_block):
     all_logs = []
     current_block = from_block
+    had_failure = False
 
     if from_block > to_block:
         print(f"From_block ({from_block}) > to_block ({to_block})")
-        return []
+        return [], had_failure
 
     while current_block <= to_block:
         chunk_end = min(current_block + LOG_BLOCK_CHUNK_SIZE, to_block)
@@ -222,18 +231,24 @@ def get_transfer_logs(chain, token_address, from_block, to_block):
                 'fromBlock': hex(current_block),
                 'toBlock': hex(chunk_end)
             }])
-            all_logs.extend(result if result else [])
+            if result is None:
+                had_failure = True
+            else:
+                all_logs.extend(result)
         else:
             data = query_etherscan(chain, {
                 'module': 'logs', 'action': 'getLogs',
                 'address': token_address, 'topic0': TRANSFER_EVENT_HASH,
                 'fromBlock': current_block, 'toBlock': chunk_end
             })
-            all_logs.extend(data.get('result', []) if data else [])
+            if data is None:
+                had_failure = True
+            else:
+                all_logs.extend(data.get('result', []))
 
         current_block = chunk_end + 1
 
-    return all_logs
+    return all_logs, had_failure
 
 
 # Extract a block number from log
@@ -299,7 +314,10 @@ def get_holders_snapshots(chain, token_address):
 
     # Upper boundary for getting and replaying logs
     max_block = max(target_blocks.values())
-    logs = get_transfer_logs(chain, token_address, int(deployment_block), int(deployment_block) + max_block)
+    logs, had_failure = get_transfer_logs(chain, token_address, int(deployment_block), max_block)
+    if had_failure:
+        print(f"Log failure for {token_address}")
+        return {f"Holders_{h}h": math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}
     logs.sort(key=get_block_number_from_log)
     snapshots = {}
     for h in TIME_FOR_SNAPSHOTS_HOURS:
@@ -310,7 +328,7 @@ def get_holders_snapshots(chain, token_address):
 
 
 def main():
-    snapshots = get_holders_snapshots('ARBITRUM', '0xb50721bcf8d664c30412cfbc6cf7a15145234ad1')
+    snapshots = get_holders_snapshots('ARBITRUM', '0xfc5a1a6eb076a2c7ad06ed22c90d7e710e35ad0a')
     print(snapshots)
 
 
