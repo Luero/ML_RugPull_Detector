@@ -17,10 +17,12 @@
 import os
 from datetime import datetime, timezone
 import math
+import time
 
 import requests
 from dotenv import load_dotenv
 
+from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
 
 load_dotenv()
 
@@ -35,7 +37,7 @@ MEGANODE_BSC_URL = (f'https://bsc-mainnet.nodereal.io/v1/{NODEREAL_API_KEY}')
 
 # IDs of chains supported by Etherscan and relevant for the dataset
 # Reference: https://docs.etherscan.io/supported-chains
-CHAIN_IDS = {'ETH': 1, 'POLYGON': 137, 'ARBITRUM': 42161}
+CHAIN_IDS = {'ETH': 1, 'POLYGON': 137, 'ARBI': 42161}
 
 # Time for snapshots in hours and approximation of average block time in seconds for each network
 TIME_FOR_SNAPSHOTS_HOURS = (1, 4, 12, 24)
@@ -68,6 +70,10 @@ ETH_LOG_RESULT_LIMIT = 1000
 NODEREAL_LOG_RESULT_LIMIT = 50000
 NODEREAL_BLOCK_RANGE_SIZE = 49000
 
+# API limitations for calls per time
+ETHERSCAN_TIME_INTERVAL = 0.35
+NODEREAL_TIME_INTERVAL = 0.20
+
 # Files to read and write
 INPUT_FILE = '../data/TM-RugPull_with_project_period.xlsx'
 OUTPUT_FILE = '../data/TM-RugPull_with_holder_count_snapshots.xlsx'
@@ -75,6 +81,7 @@ OUTPUT_FILE = '../data/TM-RugPull_with_holder_count_snapshots.xlsx'
 
 # General function to query Etherscan's endpoints
 def query_etherscan(chain, params):
+    time.sleep(ETHERSCAN_TIME_INTERVAL)
     data_not_found_messages = {'No records found', 'No data found', 'No transactions found'}
     params = params.copy()
     params['apikey'] = ETHERSCAN_API_KEY
@@ -86,7 +93,6 @@ def query_etherscan(chain, params):
         return None
 
     data = response.json()
-
     if params.get('module') == 'proxy':
         if 'error' in data:
             print(f"Proxy API error: {data['error']}")
@@ -105,6 +111,7 @@ def query_etherscan(chain, params):
 
 # General function to query MegaNode endpoints
 def query_meganode(method, params):
+    time.sleep(NODEREAL_TIME_INTERVAL)
     payload = {'jsonrpc': '2.0', 'method': method, 'params': params, 'id': 1}
     response = requests.post(MEGANODE_BSC_URL, json=payload, timeout=30)
 
@@ -340,7 +347,6 @@ def count_holders_for_snapshots(logs, target_blocks):
         if value is None:
             print(f"Token {log['address']} skipped: unsupported Transfer event.")
             return None
-
         debit_from_address(balances, from_address, value)
         credit_to_address(balances, to_address, value)
 
@@ -359,7 +365,7 @@ def get_holders_snapshots(chain, token_address):
     if deployment_block is None:
         return {f"Holders_{h}h": math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}            # https://www.w3schools.com/python/ref_math_nan.asp
 
-    if chain == 'ARBITRUM':
+    if chain == 'ARBI':
         global LATEST_ARBITRUM_BLOCK
         if LATEST_ARBITRUM_BLOCK is None:
             LATEST_ARBITRUM_BLOCK = get_latest_block(chain)
@@ -379,7 +385,6 @@ def get_holders_snapshots(chain, token_address):
         return {f"Holders_{h}h": math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}
     logs.sort(key=get_block_number_from_log)
     snapshots = count_holders_for_snapshots(logs, target_blocks)
-
     # If transfer value cannot be extracted from logs, holder counts for this token will be treated as missing value in dataset
     if snapshots is None:
         return {f'Holders_{h}h': math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}
@@ -387,9 +392,31 @@ def get_holders_snapshots(chain, token_address):
     return snapshots
 
 
+# Save snapshots to an .xlxs file
+def add_holder_snapshots_columns(sheet, headings):
+    address_col_idx = headings.index('Contract address')
+    chain_col_idx = headings.index('Blockchain')
+
+    start_col = sheet.max_column + 1
+    for i, h in enumerate(TIME_FOR_SNAPSHOTS_HOURS):
+        sheet.cell(row=1, column=start_col + i, value=f"Holders_{h}h")
+
+    for row in sheet.iter_rows(min_row=2):
+        token_address = row[address_col_idx].value
+        chain = row[chain_col_idx].value
+        if not token_address or not chain:
+            continue
+        snapshots = get_holders_snapshots(chain, token_address)
+        print(f"{token_address}: {snapshots}")
+        for i, h in enumerate(TIME_FOR_SNAPSHOTS_HOURS):
+            sheet.cell(row=row[0].row, column=start_col + i, value=snapshots.get(f"Holders_{h}h"))
+
+
 def main():
-    snapshots = get_holders_snapshots('POLYGON', '0x16dfb898cf7029303c2376031392cb9bac450f94')
-    print(snapshots)
+    workbook, sheet = load_file(INPUT_FILE)
+    headings = get_headings(sheet)
+    add_holder_snapshots_columns(sheet, headings)
+    save_workbook(workbook, OUTPUT_FILE)
 
 
 if __name__ == "__main__":

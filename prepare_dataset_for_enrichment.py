@@ -16,7 +16,9 @@ from xlxs_helpers.io_helpers import load_file, save_workbook, get_headings
 
 # Constants, since this script is applicable only to original dataset file due to its structure (rows and columns)
 INPUT_FILE = "data/TM-RugPull_original.xlsx"
-OUTPUT_FILE = "data/TM-RugPull_prepared_for_enrichment.xlsx"
+# A placeholder file to safe from re-writing anything already computed,
+# was data/TM-RugPull_prepared_for_enrichment.xlxs in original experiment
+OUTPUT_FILE = "data/placeholder.xlsx"
 
 
 # Drop rows where 'Blockchain' column contains value for networks that were excluded from further analysis
