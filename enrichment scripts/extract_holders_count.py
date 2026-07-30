@@ -257,12 +257,19 @@ def get_block_number_from_log(log):
 
 
 # Extract transfer value from log
+# Assumes that contract defines Transfer event in compliance with ERC-20 standards, but accepts slight deviations
+# If value cannot be extracted from logs, returns None and will be treated as missing value in the dataset later
 def get_transfer_value_from_log(log):
-    data = log['data']
-    if data in ('0x', '0X', ''):
-        return 0
-    return int(data, 16)
-
+    # Standard ERC-20 Transfer event
+    if log['data'] != '0x':
+        return int(log['data'], 16)
+    # Non-standard Transfer event with indexed value
+    # Added, since tests for some contract addresses (e.g. '0xF210D5d9DCF958803C286A6f8E278e4aC78e136E' on ETH) revealed
+    # non-standard ERC-20 contract definition for Transfer event, thus, it needs to be handled
+    if len(log['topics']) > 3:
+        return int(log['topics'][-1], 16)
+    print(f"Unsupported Transfer event format for {log['address']})")
+    return None
 
 # Extract address from topic value
 def get_address_from_topic(topic):
@@ -301,7 +308,8 @@ def count_holders_for_snapshots(logs, target_blocks):
         to_address = get_address_from_topic(log['topics'][2])
         value = get_transfer_value_from_log(log)
         if value is None:
-            continue
+            print(f"Token {log['address']} skipped: ""unsupported Transfer event.")
+            return None
 
         debit_from_address(balances, from_address, value)
         credit_to_address(balances, to_address, value)
@@ -326,7 +334,7 @@ def get_holders_snapshots(chain, token_address):
         if LATEST_ARBITRUM_BLOCK is None:
             LATEST_ARBITRUM_BLOCK = get_latest_block(chain)
         # Blocks with timestamp closest to snapshots intervals
-        target_blocks = {h: find_block_by_timestamp(chain, deployment_timestamp + h * 3600, deployment_block, latest_block) for h in TIME_FOR_SNAPSHOTS_HOURS}
+        target_blocks = {h: find_block_by_timestamp(chain, deployment_timestamp + h * 3600, deployment_block, LATEST_ARBITRUM_BLOCK) for h in TIME_FOR_SNAPSHOTS_HOURS}
     else:
         # Approximate number of blocks for each snapshot interval
         block_offsets = {h: hours_to_blocks(chain, h, deployment_timestamp) for h in TIME_FOR_SNAPSHOTS_HOURS}
@@ -342,11 +350,15 @@ def get_holders_snapshots(chain, token_address):
     logs.sort(key=get_block_number_from_log)
     snapshots = count_holders_for_snapshots(logs, target_blocks)
 
+    # If transfer value cannot be extracted from logs, holder counts for this token will be treated as missing value in dataset
+    if snapshots is None:
+        return {f'Holders_{h}h': math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}
+
     return snapshots
 
 
 def main():
-    snapshots = get_holders_snapshots('ETH', '0xF210D5d9DCF958803C286A6f8E278e4aC78e136E')
+    snapshots = get_holders_snapshots('ARBITRUM', '0x45d9831d8751b2325f3dbf48db748723726e1c8c')
     print(snapshots)
 
 
