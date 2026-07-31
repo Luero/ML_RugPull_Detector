@@ -67,7 +67,6 @@ TRANSFER_EVENT_HASH = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4
 # Etherscan free-tier limit on records per getLogs call: https://docs.etherscan.io/changelog
 ETH_LOG_RESULT_LIMIT = 1000
 # NodeReal limitations for block range size and number of records returned: https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
-NODEREAL_LOG_RESULT_LIMIT = 50000
 NODEREAL_BLOCK_RANGE_SIZE = 49000
 
 # API limitations for calls per time
@@ -121,6 +120,8 @@ def query_meganode(method, params):
 
     data = response.json()
     if 'error' in data:
+        if 'logs count exceeds the limit' in data['error'].get('message', ''):
+            return 'LOG_LIMIT_EXCEEDED'
         print(f"Error for {method}: {data['error']}")
         return None
 
@@ -158,7 +159,7 @@ def get_deployment_block_and_timestamp_bsc(token_address):
 
     data = result.get("result")
     if data is None:
-        print("No result")
+        print(f"No deployment transaction found for {token_address}")
         return None, None
 
     return data["blockNumber"], data["timestamp"]
@@ -246,6 +247,17 @@ def get_transfer_logs_etherscan(chain, token_address, from_block, to_block):
     chunk_logs = []
     page = 1
     while True:
+        # Etherscan allows up to page * offset <= 10000
+        if page * ETH_LOG_RESULT_LIMIT > 10000:
+            # Prevents infinite recursion
+            if from_block == to_block:
+                print(f"Too many logs in block {from_block} for {token_address}")
+                return chunk_logs, True
+            mid_block = (from_block + to_block) // 2
+            left_logs, left_failure = get_transfer_logs_etherscan(chain, token_address, from_block, mid_block)
+            right_logs, right_failure = get_transfer_logs_etherscan(chain, token_address, mid_block + 1, to_block)
+            return left_logs + right_logs, left_failure or right_failure
+
         data = query_etherscan(chain, {
             'module': 'logs', 'action': 'getLogs',
             'address': token_address, 'topic0': TRANSFER_EVENT_HASH,
@@ -276,15 +288,17 @@ def get_transfer_logs_bsc(token_address, from_block, to_block):
 
     if result is None:
         return [], True
+    # Handles situation when number of logs returned exceeds API limit (50000)
+    if result == 'LOG_LIMIT_EXCEEDED':
+        if from_block == to_block:
+            print(f"Too many logs in block {from_block} for {token_address}")
+            return [], True
+        mid_block = (from_block + to_block) // 2
+        left_logs, left_failure = get_transfer_logs_bsc(token_address, from_block, mid_block)
+        right_logs, right_failure = get_transfer_logs_bsc(token_address, mid_block + 1, to_block)
+        return left_logs + right_logs, left_failure or right_failure
 
-    # Assumes NodeReal current limit of 50,000 records. If API changes, require revision
-    if len(result) <= NODEREAL_LOG_RESULT_LIMIT or from_block == to_block:
-        return result, False
-
-    mid_block = (from_block + to_block) // 2
-    left_logs, left_failure = get_transfer_logs_bsc(token_address, from_block, mid_block)
-    right_logs, right_failure = get_transfer_logs_bsc(token_address, mid_block + 1, to_block)
-    return left_logs + right_logs, left_failure or right_failure
+    return result, False
 
 
 # Extract a block number from log
@@ -350,7 +364,7 @@ def count_holders_for_snapshots(logs, target_blocks):
         debit_from_address(balances, from_address, value)
         credit_to_address(balances, to_address, value)
 
-    # Create snapshots if there were no mo transfers before next target snapshot
+    # Create snapshots if there were no more transfers before next target snapshot
     while current_target < len(sorted_target_blocks):
         snapshot_hours = sorted_target_blocks[current_target][0]
         snapshots[f"Holders_{snapshot_hours}h"] = sum(1 for balance in balances.values() if balance > 0)
@@ -413,10 +427,12 @@ def add_holder_snapshots_columns(sheet, headings):
 
 
 def main():
-    workbook, sheet = load_file(INPUT_FILE)
-    headings = get_headings(sheet)
-    add_holder_snapshots_columns(sheet, headings)
-    save_workbook(workbook, OUTPUT_FILE)
+    # workbook, sheet = load_file(INPUT_FILE)
+    # headings = get_headings(sheet)
+    # add_holder_snapshots_columns(sheet, headings)
+    # save_workbook(workbook, OUTPUT_FILE)
+    snapshots = get_holders_snapshots('ARBI', '0xf05f2fa8f169eed50110f3f80b4aa712a758be96')
+    print(snapshots)
 
 
 if __name__ == "__main__":
