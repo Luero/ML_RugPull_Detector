@@ -75,7 +75,9 @@ NODEREAL_TIME_INTERVAL = 0.20
 
 # Files to read and write
 INPUT_FILE = '../data/TM-RugPull_with_project_period.xlsx'
-OUTPUT_FILE = '../data/TM-RugPull_with_holder_count_snapshots.xlsx'
+# A placeholder file to safe from re-writing anything already computed,
+# '../data/TM-RugPull_with_holder_count_snapshots.xlsx' was used in original experiment
+OUTPUT_FILE = "data/placeholder.xlsx"
 
 
 # General function to query Etherscan's endpoints
@@ -427,12 +429,10 @@ def add_holder_snapshots_columns(sheet, headings):
 
 
 def main():
-    # workbook, sheet = load_file(INPUT_FILE)
-    # headings = get_headings(sheet)
-    # add_holder_snapshots_columns(sheet, headings)
-    # save_workbook(workbook, OUTPUT_FILE)
-    snapshots = get_holders_snapshots('ARBI', '0xf05f2fa8f169eed50110f3f80b4aa712a758be96')
-    print(snapshots)
+    workbook, sheet = load_file(INPUT_FILE)
+    headings = get_headings(sheet)
+    add_holder_snapshots_columns(sheet, headings)
+    save_workbook(workbook, OUTPUT_FILE)
 
 
 if __name__ == "__main__":
