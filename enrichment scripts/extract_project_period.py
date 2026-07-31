@@ -9,8 +9,8 @@ from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
 
 INPUT_FILE = '../data/TM-RugPull_prepared_for_enrichment.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
-# was data/TM-RugPull_prepared_for_enrichment.xlxs in original experiment
-OUTPUT_FILE = "data/placeholder.xlsx"
+# was '../data/TM-RugPull_prepared_for_enrichment.xlxs' in original experiment
+OUTPUT_FILE = "../data/placeholder.xlsx"
 
 
 # Parse each cell that supposed to be a date and attempt to extract it in datetime format

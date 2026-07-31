@@ -77,7 +77,7 @@ NODEREAL_TIME_INTERVAL = 0.20
 INPUT_FILE = '../data/TM-RugPull_with_project_period.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
 # '../data/TM-RugPull_with_holder_count_snapshots.xlsx' was used in original experiment
-OUTPUT_FILE = "data/placeholder.xlsx"
+OUTPUT_FILE = "../data/placeholder.xlsx"
 
 
 # General function to query Etherscan's endpoints
