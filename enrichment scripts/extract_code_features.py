@@ -9,11 +9,14 @@
 
 from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
 import pandas as pd
+import os
 
 
 
 # Original dataset file
 ORIGINAL_FILE = '../data/TM-RugPull_original.xlsx'
+# Local directory with contract code files
+SOURCE_CODE_DIR = '../data/SOURCE CODE'
 
 INPUT_FILE = '../data/TM-RugPull_with_holder_count_snapshots.xlsx'
 OUTPUT_FILE = "../data/TM-RugPull_with_LP_drain_code_detection.xlsx"
@@ -50,6 +53,28 @@ def resolve_source_file_number(row, mapping_result):
         return None
     return matches[0]
 
+
+# Build the path to files where contract code is located
+def build_path_to_source_code_file(original_row_number):
+    filename = f"{original_row_number}.txt"
+    return os.path.join(SOURCE_CODE_DIR, filename)
+
+
+# Load source code .txt file for a particular row using row number and mapping result
+def load_source_code_for_row(row, mapping_result):
+    file_number = resolve_source_file_number(row, mapping_result)
+    if file_number is None:
+        return None
+    path = build_path_to_source_code_file(file_number)
+    if not os.path.isfile(path):
+        print(f"Source file missing: {path}")
+        return None
+    try:
+        with open(path, 'r', encoding='utf-8', errors='ignore') as code_file:
+            return code_file.read()
+    except OSError as e:
+        print(f"Could not read {path}: {e}")
+        return None
 
 
 
