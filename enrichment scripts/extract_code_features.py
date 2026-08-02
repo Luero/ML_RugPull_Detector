@@ -70,13 +70,12 @@ LP_DRAIN_FEATURE_NAMES = [
     'has_self_swap_patterns',
     'has_owner_guard',
     'has_lp_lock_reference',
-    'is_contract_verified'
 ]
+
+ALL_FEATURE_NAMES = LP_DRAIN_FEATURE_NAMES + ['is_contract_verified']
 
 INPUT_FILE = '../data/TM-RugPull_with_holder_count_snapshots.xlsx'
 OUTPUT_FILE = "../data/TM-RugPull_with_LP_drain_code_detection.xlsx"
-
-
 
 
 # Build a composite key to use for mapping projects to relevant rows in original dataset and then to .txt files
@@ -182,7 +181,7 @@ def compute_lp_drain_features(row, mapping_result):
     source_code = load_source_code_for_row(row, mapping_result)
     status = check_source_file_safety(source_code)
 
-    if check_source_file_safety(source_code) != 'OK':
+    if status != 'OK':
         is_verified = 0 if status in ('EMPTY_FILE', 'UNVERIFIED_BYTECODE') else None
         return {'is_contract_verified': is_verified, **{name: None for name in LP_DRAIN_FEATURE_NAMES}}
 
@@ -198,13 +197,13 @@ def compute_lp_drain_features(row, mapping_result):
 # Add columns with potential LP-drain signals to the dataset
 def add_lp_drain_feature_columns(sheet, headings, cleaned, mapping_result):
     first_new_col = len(headings) + 1
-    for i, feature_name in enumerate(LP_DRAIN_FEATURE_NAMES):
+    for i, feature_name in enumerate(ALL_FEATURE_NAMES):
         sheet.cell(row=1, column=first_new_col + i, value=feature_name)
 
     for i, row in cleaned.iterrows():
         excel_row = i + 2
         features = compute_lp_drain_features(row, mapping_result)
-        for j, feature_name in enumerate(LP_DRAIN_FEATURE_NAMES):
+        for j, feature_name in enumerate(ALL_FEATURE_NAMES):
             sheet.cell(row=excel_row, column=first_new_col + j, value=features[feature_name])
 
 
@@ -216,11 +215,6 @@ def main():
      headings = get_headings(sheet)
      add_lp_drain_feature_columns(sheet, headings, cleaned, mapping_result)
      save_workbook(workbook, OUTPUT_FILE)
-
-     # for i, row in cleaned.iterrows():
-     #    match = resolve_source_file_number(row, mapping_result)
-     #    print(f"{row['Project Title']} | {row['project end date']} --> source file: {match}.txt")
-
 
 
 if __name__ == "__main__":
