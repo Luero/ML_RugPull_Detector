@@ -379,7 +379,7 @@ def count_holders_for_snapshots(logs, target_blocks):
 def get_holders_snapshots(chain, token_address):
     deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, token_address)
     if deployment_block is None:
-        return {f"Holders_{h}h": math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}            # https://www.w3schools.com/python/ref_math_nan.asp
+        return {f"Holders_{h}h": math.nan for h in TIME_FOR_SNAPSHOTS_HOURS}
 
     if chain == 'ARBI':
         global LATEST_ARBITRUM_BLOCK
