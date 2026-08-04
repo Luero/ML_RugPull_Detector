@@ -1,0 +1,201 @@
+rank,name,symbol
+1,Bitcoin,BTC
+2,Ethereum,ETH
+3,Tether,USDT
+4,Litecoin,LTC
+5,XRP,XRP
+6,Polkadot,DOT
+7,Bitcoin Cash,BCH
+8,Cardano,ADA
+9,Binance Coin,BNB
+10,Chainlink,LINK
+11,USD Coin,USDC
+12,Wrapped Bitcoin,WBTC
+13,Bitcoin SV,BSV
+14,Stellar,XLM
+15,EOS,EOS
+16,Monero,XMR
+17,THETA,THETA
+18,TRON,TRX
+19,NEM,XEM
+20,VeChain,VET
+21,Tezos,XTZ
+22,Celsius,CEL
+23,Uniswap,UNI
+24,UNUS SED LEO,LEO
+25,Crypto.com Coin,CRO
+26,Dogecoin,DOGE
+27,Cosmos,ATOM
+28,Dai,DAI
+29,Binance USD,BUSD
+30,Neo,NEO
+31,Aave,AAVE
+32,Synthetix,SNX
+33,Revain,REV
+34,Huobi Token,HT
+35,Filecoin,FIL
+36,Dash,DASH
+37,IOTA,MIOTA
+38,Ethereum Classic,ETC
+39,Zilliqa,ZIL
+40,yearn.finance,YFI
+41,Maker,MKR
+42,FTX Token,FTT
+43,Compound,COMP
+44,Zcash,ZEC
+45,SushiSwap,SUSHI
+46,Kusama,KSM
+47,Decred,DCR
+48,Waves,WAVES
+49,Algorand,ALGO
+50,UMA,UMA
+51,OKB,OKB
+52,DigiByte,DGB
+53,OMG Network,OMG
+54,renBTC,RENBTC
+55,Ontology,ONT
+56,Elrond,EGLD
+57,The Graph,GRT
+58,Nexo,NEXO
+59,Blockstack,STX
+60,Basic Attention Token,BAT
+61,Loopring,LRC
+62,Terra,LUNA
+63,BitTorrent,BTT
+64,Reserve Rights,RSR
+65,Ren,REN
+66,0x,ZRX
+67,NEAR Protocol,NEAR
+68,ICON,ICX
+69,TrueUSD,TUSD
+70,Avalanche,AVAX
+71,Ampleforth,AMPL
+72,Paxos Standard,PAX
+73,Qtum,QTUM
+74,SwissBorg,CHSB
+75,THORChain,RUNE
+76,Nano,NANO
+77,Hedera Hashgraph,HBAR
+78,Siacoin,SC
+79,HUSD,HUSD
+80,Energy Web Token,EWT
+81,Augur,REP
+82,TerraUSD,UST
+83,ABBC Coin,ABBC
+84,Celo,CELO
+85,Kyber Network,KNC
+86,NXM,NXM
+87,Ocean Protocol,OCEAN
+88,Theta Fuel,TFUEL
+89,Lisk,LSK
+90,Bitcoin Gold,BTG
+91,Verge,XVG
+92,HedgeTrade,HEDG
+93,Horizen,ZEN
+94,Band Protocol,BAND
+95,MaidSafeCoin,MAID
+96,Bancor,BNT
+97,Quant,QNT
+98,Holo,HOT
+99,ZB Token,ZB
+100,Gnosis,GNO
+101,CyberVein,CVT
+102,Status,SNT
+103,Aragon,ANT
+104,Decentraland,MANA
+105,Enjin Coin,ENJ
+106,Balancer,BAL
+107,Ravencoin,RVN
+108,Curve DAO Token,CRV
+109,Numeraire,NMR
+110,Chiliz,CHZ
+111,RSK Infrastructure Framework,RIF
+112,Solana,SOL
+113,Matic Network,MATIC
+114,MonaCoin,MONA
+115,Bitcoin Diamond,BCD
+116,Nervos Network,CKB
+117,DxChain Token,DX
+118,IOST,IOST
+119,Arweave,AR
+120,Kin,KIN
+121,Orchid,OXT
+122,Bytom,BTM
+123,Helium,HNT
+124,1inch,1INCH
+125,Unibright,UBT
+126,Ardor,ARDR
+127,PAX Gold,PAXG
+128,Kleros,PNK
+129,BitShares,BTS
+130,Golem,GNT
+131,Divi,DIVI
+132,Syntropy,NOIA
+133,Storj,STORJ
+134,Injective Protocol,INJ
+135,Kava.io,KAVA
+136,Swipe,SXP
+137,Utrust,UTK
+138,Steem,STEEM
+139,Velas,VLX
+140,iExec RLC,RLC
+141,TrustSwap,SWAP
+142,TomoChain,TOMO
+143,DFI.Money,YFII
+144,Oasis Network,ROSE
+145,Civic,CVC
+146,Komodo,KMD
+147,Serum,SRM
+148,aelf,ELF
+149,Keep3rV1,KP3R
+150,Ankr,ANKR
+151,KuCoin Shares,KCS
+152,OriginTrail,TRAC
+153,JUST,JST
+154,FunFair,FUN
+155,LBRY Credits,LBC
+156,Polymath,POLY
+157,Uquid Coin,UQC
+158,WAX,WAXP
+159,Wanchain,WAN
+160,Alpha Finance Lab,ALPHA
+161,Electroneum,ETN
+162,Hive,HIVE
+163,SingularityNET,AGI
+164,Fantom,FTM
+165,Energi,NRG
+166,Ark,ARK
+167,Haven Protocol,XHV
+168,Melon,MLN
+169,Stratis,STRAX
+170,Everipedia,IQ
+171,ReddCoin,RDD
+172,Pundi X,NPXS
+173,The Midas Touch Gold,TMTG
+174,Nexalt,XLT
+175,Fetch.ai,FET
+176,Power Ledger,POWR
+177,Harmony,ONE
+178,ShareToken,SHR
+179,Syscoin,SYS
+180,MCO,MCO
+181,AdEx Network,ADX
+182,STASIS EURO,EURS
+183,IoTeX,IOTX
+184,Handshake,HNS
+185,IRISnet,IRIS
+186,LTO Network,LTO
+187,DIA,DIA
+188,GateToken,GT
+189,Populous,PPT
+190,xDai,STAKE
+191,QuarkChain,QKC
+192,Travala.com,AVA
+193,Nimiq,NIM
+194,SOLVE,SOLVE
+195,Firo,XZC
+196,Voyager Token,VGX
+197,Tellor,TRB
+198,Aion,AION
+199,Ultra,UOS
+200,Super Zero Protocol,SERO

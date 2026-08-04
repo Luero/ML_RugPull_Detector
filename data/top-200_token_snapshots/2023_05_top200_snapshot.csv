@@ -1,0 +1,201 @@
+rank,name,symbol
+1,Bitcoin,BTC
+2,Ethereum,ETH
+3,Tether,USDT
+4,BNB,BNB
+5,USD Coin,USDC
+6,XRP,XRP
+7,Cardano,ADA
+8,Dogecoin,DOGE
+9,Polygon,MATIC
+10,Solana,SOL
+11,Polkadot,DOT
+12,TRON,TRX
+13,Litecoin,LTC
+14,Binance USD,BUSD
+15,Shiba Inu,SHIB
+16,Avalanche,AVAX
+17,Dai,DAI
+18,Wrapped Bitcoin,WBTC
+19,Chainlink,LINK
+20,UNUS SED LEO,LEO
+21,Cosmos,ATOM
+22,Uniswap,UNI
+23,Monero,XMR
+24,OKB,OKB
+25,Ethereum Classic,ETC
+26,Toncoin,TON
+27,Stellar,XLM
+28,Internet Computer,ICP
+29,Bitcoin Cash,BCH
+30,TrueUSD,TUSD
+31,Filecoin,FIL
+32,Hedera,HBAR
+33,Aptos,APT
+34,Cronos,CRO
+35,Lido DAO,LDO
+36,NEAR Protocol,NEAR
+37,Arbitrum,ARB
+38,VeChain,VET
+39,Quant,QNT
+40,ApeCoin,APE
+41,Algorand,ALGO
+42,The Graph,GRT
+43,Fantom,FTM
+44,Pepe,PEPE
+45,EOS,EOS
+46,Stacks,STX
+47,MultiversX,EGLD
+48,The Sandbox,SAND
+49,Aave,AAVE
+50,Decentraland,MANA
+51,Theta Network,THETA
+52,Rocket Pool,RPL
+53,BitDAO,BIT
+54,Tezos,XTZ
+55,Flow,FLOW
+56,Chiliz,CHZ
+57,Axie Infinity,AXS
+58,Conflux,CFX
+59,Immutable,IMX
+60,Render Token,RNDR
+61,Pax Dollar,USDP
+62,KuCoin Token,KCS
+63,USDD,USDD
+64,Curve DAO Token,CRV
+65,Neo,NEO
+66,Maker,MKR
+67,Klaytn,KLAY
+68,Sui,SUI
+69,Casper,CSPR
+70,Bitcoin SV,BSV
+71,Synthetix,SNX
+72,Optimism,OP
+73,GMX,GMX
+74,Injective,INJ
+75,Zcash,ZEC
+76,BitTorrent(New),BTT
+77,Terra Classic,LUNC
+78,PAX Gold,PAXG
+79,Gemini Dollar,GUSD
+80,IOTA,MIOTA
+81,Frax Share,FXS
+82,eCash,XEC
+83,Mina,MINA
+84,Dash,DASH
+85,XDC Network,XDC
+86,GateToken,GT
+87,Huobi Token,HT
+88,Trust Wallet Token,TWT
+89,WOO Network,WOO
+90,Flare,FLR
+91,THORChain,RUNE
+92,Loopring,LRC
+93,Zilliqa,ZIL
+94,PancakeSwap,CAKE
+95,Convex Finance,CVX
+96,Nexo,NEXO
+97,FLOKI,FLOKI
+98,Kava,KAVA
+99,dYdX,DYDX
+100,Enjin Coin,ENJ
+101,1inch Network,1INCH
+102,Osmosis,OSMO
+103,Basic Attention Token,BAT
+104,Mask Network,MASK
+105,SingularityNET,AGIX
+106,JasmyCoin,JASMY
+107,Oasis Network,ROSE
+108,NEM,XEM
+109,Ethereum Name Service,ENS
+110,Holo,HOT
+111,Gnosis,GNO
+112,MX TOKEN,MX
+113,Terra,LUNA
+114,Balancer,BAL
+115,Theta Fuel,TFUEL
+116,Compound,COMP
+117,Ankr,ANKR
+118,Qtum,QTUM
+119,Audius,AUDIO
+120,Solar,SXP
+121,Ravencoin,RVN
+122,Celo,CELO
+123,Threshold,T
+124,Decred,DCR
+125,Chia,XCH
+126,yearn.finance,YFI
+127,EthereumPoW,ETHW
+128,ICON,ICX
+129,Astar,ASTR
+130,Arweave,AR
+131,Fetch.ai,FET
+132,Blur,BLUR
+133,Kusama,KSM
+134,Bitcoin Gold,BTG
+135,Golem,GLM
+136,SushiSwap,SUSHI
+137,Harmony,ONE
+138,Gala,GALA
+139,DAO Maker,DAO
+140,IoTeX,IOTX
+141,STEPN,GMT
+142,MAGIC,MAGIC
+143,JUST,JST
+144,Helium,HNT
+145,ssv.network,SSV
+146,Ocean Protocol,OCEAN
+147,Siacoin,SC
+148,Band Protocol,BAND
+149,UMA,UMA
+150,Waves,WAVES
+151,0x Protocol,ZRX
+152,Moonbeam,GLMR
+153,Kadena,KDA
+154,Ontology,ONT
+155,Bone ShibaSwap,BONE
+156,WAX,WAXP
+157,Hive,HIVE
+158,IOST,IOST
+159,aelf,ELF
+160,Reserve Rights,RSR
+161,Biconomy,BICO
+162,TerraClassicUSD,USTC
+163,BORA,BORA
+164,Alchemy Pay,ACH
+165,BinaryX,BNX
+166,SPACE ID,ID
+167,MobileCoin,MOB
+168,SafePal,SFP
+169,Flux,FLUX
+170,SKALE,SKL
+171,Open Campus,EDU
+172,Celer Network,CELR
+173,RSK Infrastructure Framework,RIF
+174,Nervos Network,CKB
+175,Axelar,AXL
+176,iExec RLC,RLC
+177,Livepeer,LPT
+178,Cartesi,CTSI
+179,DigiByte,DGB
+180,OMG Network,OMG
+181,Bitgert,BRISE
+182,Amp,AMP
+183,ABBC Coin,ABBC
+184,Radicle,RAD
+185,Storj,STORJ
+186,Liquity,LQTY
+187,Stargate Finance,STG
+188,Core,CORE
+189,Illuvium,ILV
+190,Dogelon Mars,ELON
+191,Multichain,MULTI
+192,MetisDAO,METIS
+193,JOE,JOE
+194,Aragon,ANT
+195,Lisk,LSK
+196,Horizen,ZEN
+197,Galxe,GAL
+198,Cocos-BCX,COCOS
+199,Pundi X (New),PUNDIX
+200,Braintrust,BTRST
