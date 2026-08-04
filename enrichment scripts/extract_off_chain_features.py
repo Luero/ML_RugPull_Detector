@@ -13,42 +13,44 @@ import re
 # They were excluded from similarity analysis to avoid noise
 SYMBOL_PLACEHOLDERS = {'BEP-20 TOKEN', 'ERC-20 TOKEN', 'ERC20', 'BEP20 TOKEN'}
 
-# TODO: pre-process project names (strip 'Finance', 'Crypto', 'Token', 'fork', 'play', 'coin', 'cash', 'protocol', 'network', 'labs', 'foundation', 'DAO', 'chain', 'ecosystem',
-# TODO: 'fund', 'trade, 'swap', 'tech, 'AI' (with boundaries), 'reward', 'w' (wrapped - a common prefix for legitimate wrapped tokens, specific pattern for symbols)
+# 'w' as a prefix to token symbol is a sign that it is a wrapped version of this token, it is legitimate
+WRAPPED_TICKER_PREFIX_PATTERN = re.compile(r'^w(?=[A-Z])')
+
 # Strings that could appear in both scam and legitimate tokens as suffixes, prefixes or separate words in project names
-COMMON_PARTS = [
-    re.compile(r'\bfinance\b', re.IGNORECASE),
-    re.compile(r'\bcrypto\b', re.IGNORECASE),
-    re.compile(r'\btoken\b', re.IGNORECASE),
-    re.compile(r'\bcoin\b', re.IGNORECASE),
-    re.compile(r'\bfork\b', re.IGNORECASE),
-    re.compile(r'\bplay\b', re.IGNORECASE),
-    re.compile(r'\bcash\b', re.IGNORECASE),
-    re.compile(r'\bfund\b', re.IGNORECASE),
-    re.compile(r'\btrade\b', re.IGNORECASE),
-    re.compile(r'\bswap\b', re.IGNORECASE),
-    re.compile(r'\btech\b', re.IGNORECASE),
-    # TODO: reduce false-positiveness
-    re.compile(r'\bai\b', re.IGNORECASE),
-    re.compile(r'\breward\b', re.IGNORECASE),
-    re.compile(r'\bprotocol\b', re.IGNORECASE),
-    re.compile(r'\bnetwork\b', re.IGNORECASE),
-    re.compile(r'\bdao\b', re.IGNORECASE),
-    re.compile(r'\blabs\b', re.IGNORECASE),
-    re.compile(r'\bfoundation\b', re.IGNORECASE),
-    re.compile(r'\bchain\b', re.IGNORECASE),
-    re.compile(r'\becosystem\b', re.IGNORECASE),
+COMMON_SUFFIX_OR_PREFIX = ['finance', 'crypto', 'token', 'coin', 'fork', 'play', 'cash', 'fund', 'trade', 'swap', 'tech',
+                           'ai', 'reward', 'protocol', 'network', 'dao', 'labs', 'foundation', 'chain', 'ecosystem']
+
+# Strings that scammers sometimes add as prefixes to well-known names to false represent relation to these well-known projects
+# Based on TM-RugPull dataset naming patterns
+COVER_WORDS = ['baby', 'safe', 'mini']
+
+# Sometimes scammers put version number near token name to mis-represent it as a new version of well-known project
+# Based on TM-RugPull dataset naming patterns
+VERSION_PATTERNS = [
+    re.compile(r'\b\d+\.0\b'),
+    re.compile(r'\bv\d+\b', re.IGNORECASE),
+    re.compile(r'\(new\)', re.IGNORECASE),
+    re.compile(r'\bclassic\b', re.IGNORECASE),
 ]
 
-# TODO: choose and implement an algorithm for string comparison:
-# TODO: https://medium.com/data-science-collective/deep-dive-into-string-similarity-from-edit-distance-to-fuzzy-matching-theory-and-practice-in-68e214c0cb1d
+# Build compiled regex for each word in order to cover all possible common suffix / prefix occurrences
+def build_word_pattern(word):
+    escaped = re.escape(word)
+    return re.compile(rf'^{escaped}|{escaped}$|\b{escaped}\b', re.IGNORECASE)
 
+COMMON_WORD_PATTERNS = [build_word_pattern(word) for word in COMMON_SUFFIX_OR_PREFIX]
+COVER_PATTERNS = [build_word_pattern(word) for word in COVER_WORDS]
 
 # Files to read and write
 INPUT_FILE = '../data/TM-RugPull_with_LP_drain_code_detection.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
 # '../data/TM-RugPull_with_token_name_similarity.xlsx' was used in original experiment
 OUTPUT_FILE = "../data/TM-RugPull_with_token_name_similarity.xlsx"
+
+
+# TODO: choose and implement an algorithm for string comparison:
+# TODO: https://medium.com/data-science-collective/deep-dive-into-string-similarity-from-edit-distance-to-fuzzy-matching-theory-and-practice-in-68e214c0cb1d
+
 
 
 
