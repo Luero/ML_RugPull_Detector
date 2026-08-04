@@ -1,11 +1,25 @@
 # Extract token name similarity to top-200 projects in form of similarity score.
 # Deceptive name similarity is one of OSINT features mentioned in related work as a strong signal of fraud.
 #
-from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
-
 # TODO: explain methodology of choosing top-200 tokens, algorithm of calculating similarity score
+# Dates to get top-200 token snapshots
+# 05.2014
+# 05.2015
+# 05.2016
+# 05.2017
+# 05.2018
+# 05.2019
+# 05.2020
+# 01.2021 – pre-bull run
+# 11.2021 – bull run
+# 01.2022 – before Tera Luna
+# 05.2022 – after Luna (late dates)
+# 11.2022 – after FTX (late dates)
+# 05.2023
+# 05.2024
 
 
+from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
 import re
 
 
