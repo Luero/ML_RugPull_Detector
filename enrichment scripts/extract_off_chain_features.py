@@ -1,23 +1,25 @@
 # Extract token name similarity to top-200 projects in form of similarity score.
 # Deceptive name similarity is one of OSINT features mentioned in related work as a strong signal of fraud.
-#
-# TODO: explain methodology of choosing top-200 tokens, algorithm of calculating similarity score
-# Dates to get top-200 token snapshots
-# 05.2014
-# 05.2015
-# 05.2016
-# 05.2017
-# 05.2018
-# 05.2019
-# 05.2020
-# 01.2021 – pre-bull run
-# 11.2021 – bull run
-# 01.2022 – before Tera Luna
-# 05.2022 – after Luna (late dates)
-# 11.2022 – after FTX (late dates)
-# 05.2023
-# 05.2024
 
+# The script uses top-200 snapshots taken from CoinMarketCap historical page (extracted manually by copy-pasting into .csv files).
+# Dates for snapshots were picked with consideration of the dataset content (most tokens are from 2021-2024) and market situation:
+# so before 2021 snapshots were taken on annual basis (on May). In 2021, 2022 more snapshots were taken, since the market was active
+# and top-200 tokens changed faster. Moreover, some market events drove significant changes in ranking (fall of Tera Luna and FTX exchange).
+# Thus, to reflect these events, pre- and post- events snapshots were also taken.
+
+# Methodology to count similarity:
+# (1) project names and symbols both are assessed separately, and then their scores are combined with heuristic weight application;
+# (2) before comparison, each string is normalised to a single lowercase word, than common words like 'finance' or 'token' and words
+#     that are commonly used by scammers to misrepresent connection with legitimate assets (like 'new' or 'safe') are stripped to avoid noise;
+# (3) Levenstein distance with normalisation is used as string similarity comparison algorithm, since prefexes matter in token names and symbols;
+# (4) wrapped versions of legitimate tokens return 0.0 similarity (the pattern is 'w' in the beginning of token symbol)
+# (5) names and symbols are compared against the snapshot which is closest to the project start date, but before the project launch, because
+#     token can 'mimic' only coins that exist on time of its launch
+
+
+import csv
+import os
+from datetime import datetime
 
 from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
 import re
@@ -54,6 +56,9 @@ COMBINED_PATTERNS_TO_STRIP = COVER_PATTERNS + COMMON_WORD_PATTERNS
 # All project names and symbols are normalised before comparing similarity (remove spaces, punctuation)
 # to make names like 'safeETH', 'Safe ETH' and 'SAFE-eth' identical
 NORMALISE_PATTERN = re.compile(r'[^a-z0-9]')
+
+SNAPSHOTS_DIR = '../data/top-200_token_snapshots'
+SNAPSHOT_FILENAME_PATTERN = re.compile(r'^(\d{4})_(\d{2})_(\d{2})_top200_snapshot\.csv$')
 
 # Files to read and write
 INPUT_FILE = '../data/TM-RugPull_with_LP_drain_code_detection.xlsx'
@@ -140,15 +145,29 @@ def compute_project_name_similarity(dataset_name, snapshot_name):
     return normalise_levenshtein_similarity(prepared_dataset_name, prepared_snapshot_name)
 
 
-# TODO: read and parse .csv
+# Saves all snapshots of top-200 tokens to re-use in comparison, key is date of capture
+def load_snapshots(snapshot_dir):
+    snapshots = {}
+    for filename in os.listdir(snapshot_dir):
+        match = SNAPSHOT_FILENAME_PATTERN.match(filename)
+        if not match:
+            continue
+        snapshot_year, snapshot_month, snapshot_day = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        with open(os.path.join(snapshot_dir, filename), newline='', encoding='utf-8') as snapshot_file:
+            reader = csv.DictReader(snapshot_file)
+            snapshots[datetime(snapshot_year, snapshot_month, snapshot_day)] = [(row['name'], row['symbol']) for row in reader]
+    return snapshots
 
 # Pipeline: take project name and symbol from dataset -> normalise and strip -> find relevant .csv by date -> compare -> interprete result
+
+
 
 
 
 def main():
     workbook, sheet = load_file(INPUT_FILE)
     headings = get_headings(sheet)
+    snapshots = load_snapshots(SNAPSHOTS_DIR)
 
     save_workbook(workbook, OUTPUT_FILE)
 
