@@ -3,7 +3,8 @@
 
 # OpenPyXL is used here to preserve hyperlinks in the dataset file.
 
-from openpyxl import load_workbook, Workbook
+from openpyxl import load_workbook
+from datetime import datetime
 
 # Load .xlsx file using OpenPyXL
 # Returns workbook and sheet from .xlcx file
@@ -22,3 +23,16 @@ def save_workbook(workbook, output_file):
 # Extract a header row as a list
 def get_headings(sheet):
     return [c.value for c in sheet[1]]
+
+
+# Parse a cell that supposed to be a date and attempt to extract it in datetime format
+def parse_date(date):
+    if date is None:
+        return None
+    if isinstance(date, datetime):
+        return date
+    try:
+        return datetime.strptime(str(date), '%Y-%m-%d')
+    except ValueError:
+        print(f"Could not parse date: {date}")
+        return None

@@ -60,6 +60,10 @@ NORMALISE_PATTERN = re.compile(r'[^a-z0-9]')
 SNAPSHOTS_DIR = '../data/top-200_token_snapshots'
 SNAPSHOT_FILENAME_PATTERN = re.compile(r'^(\d{4})_(\d{2})_(\d{2})_top200_snapshot\.csv$')
 
+# Symbol weighted higher than name, since almost identical symbol is a stronger and more misleading signal
+PROJECT_NAME_SIMILARITY_WEIGHT = 0.35
+SYMBOL_SIMILARITY_WEIGHT = 0.65
+
 # Files to read and write
 INPUT_FILE = '../data/TM-RugPull_with_LP_drain_code_detection.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
@@ -145,6 +149,11 @@ def compute_project_name_similarity(dataset_name, snapshot_name):
     return normalise_levenshtein_similarity(prepared_dataset_name, prepared_snapshot_name)
 
 
+# Compute final similarity score using weights of each parameter
+def compute_combined_similarity(project_name_similarity, symbol_similarity):
+    return PROJECT_NAME_SIMILARITY_WEIGHT * project_name_similarity + SYMBOL_SIMILARITY_WEIGHT * symbol_similarity
+
+
 # Saves all snapshots of top-200 tokens to re-use in comparison, key is date of capture
 def load_snapshots(snapshot_dir):
     snapshots = {}
@@ -158,7 +167,8 @@ def load_snapshots(snapshot_dir):
             snapshots[datetime(snapshot_year, snapshot_month, snapshot_day)] = [(row['name'], row['symbol']) for row in reader]
     return snapshots
 
-# Pipeline: take project name and symbol from dataset -> normalise and strip -> find relevant .csv by date -> compare -> interprete result
+
+
 
 
 

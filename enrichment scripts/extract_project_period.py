@@ -3,27 +3,13 @@
 # to calculate project period, which could have predictive power to detect rug-pulls, since projects that live longer
 # are less likely to be fraudulent.
 
-from datetime import datetime
-from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
 
+from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook, parse_date
 
 INPUT_FILE = '../data/TM-RugPull_prepared_for_enrichment.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
 # was '../data/TM-RugPull_prepared_for_enrichment.xlxs' in original experiment
 OUTPUT_FILE = "../data/placeholder.xlsx"
-
-
-# Parse each cell that supposed to be a date and attempt to extract it in datetime format
-def parse_date(date):
-    if date is None:
-        return None
-    if isinstance(date, datetime):
-        return date
-    try:
-        return datetime.strptime(str(date), '%Y-%m-%d')
-    except ValueError:
-        print(f"Could not parse date: {date}")
-        return None
 
 
 # Calculate duration of a project in days
