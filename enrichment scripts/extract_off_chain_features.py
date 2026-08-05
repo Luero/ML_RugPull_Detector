@@ -28,7 +28,8 @@ import re
 SYMBOL_PLACEHOLDERS = {'BEP-20 TOKEN', 'ERC-20 TOKEN', 'ERC20', 'BEP20 TOKEN'}
 
 # 'w' as a prefix to token symbol is a sign that it is a wrapped version of this token, it is legitimate
-WRAPPED_TICKER_PREFIX_PATTERN = re.compile(r'^w(?=[A-Z])')
+# A common convention is lower 'w', but dataset has leginimate entries with 'W', so regex is case-insensitive
+WRAPPED_TICKER_PREFIX_PATTERN = re.compile(r'^w', re.IGNORECASE)
 
 # Strings that could appear in both scam and legitimate tokens as suffixes, prefixes or separate words in project names
 COMMON_SUFFIX_OR_PREFIX = ['finance', 'crypto', 'token', 'coin', 'fork', 'play', 'cash', 'fund', 'trade', 'swap', 'tech',
@@ -120,8 +121,28 @@ def normalise_levenshtein_similarity(dataset_text, snapshot_text):
     return 1 - count_levenshtein_distance(dataset_text, snapshot_text) / longest_length
 
 
+# Compare token symbols from dataset and snapshot of top-200 tokens
+def compute_symbol_similarity(dataset_symbol, snapshot_symbol):
+    normalised_snapshot_symbol = normalise_string(snapshot_symbol)
+    # Since wrapped tokens are legitimate, returns 0.0 similarity score, if the only difference from top-200 tokens
+    # is leading 'w'. Assumes that in this case dataset contains a legitimate top-200 token entry
+    if WRAPPED_TICKER_PREFIX_PATTERN.match(dataset_symbol):
+        unwrapped_symbol = normalise_string(dataset_symbol.strip()[1:])
+        if unwrapped_symbol == normalised_snapshot_symbol:
+            return 0.0
+    return normalise_levenshtein_similarity(normalise_string(dataset_symbol), normalised_snapshot_symbol)
+
+
+# Compare project name from dataset with project name of top-200 tokens snapshot
+def compute_project_name_similarity(dataset_name, snapshot_name):
+    prepared_dataset_name = strip_project_name(normalise_string(dataset_name))
+    prepared_snapshot_name = strip_project_name(normalise_string(snapshot_name))
+    return normalise_levenshtein_similarity(prepared_dataset_name, prepared_snapshot_name)
+
 
 # TODO: read and parse .csv
+
+# Pipeline: take project name and symbol from dataset -> normalise and strip -> find relevant .csv by date -> compare -> interprete result
 
 
 
