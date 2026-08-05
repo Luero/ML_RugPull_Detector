@@ -36,34 +36,53 @@ COMMON_SUFFIX_OR_PREFIX = ['finance', 'crypto', 'token', 'coin', 'fork', 'play',
 
 # Strings that scammers sometimes add as prefixes to well-known names to false represent relation to these well-known projects
 # Based on TM-RugPull dataset naming patterns
-COVER_WORDS = ['baby', 'safe', 'mini']
-
-# Sometimes scammers put version number near token name to mis-represent it as a new version of well-known project
-# Based on TM-RugPull dataset naming patterns
-VERSION_PATTERNS = [
-    re.compile(r'\b\d+\.0\b'),
-    re.compile(r'\bv\d+\b', re.IGNORECASE),
-    re.compile(r'\(new\)', re.IGNORECASE),
-    re.compile(r'\bclassic\b', re.IGNORECASE),
-]
+COVER_WORDS = ['baby', 'safe', 'mini', 'new', 'classic']
 
 # Build compiled regex for each word in order to cover all possible common suffix / prefix occurrences
-def build_word_pattern(word):
+def build_prefix_suffix_pattern(word):
     escaped = re.escape(word)
-    return re.compile(rf'^{escaped}|{escaped}$|\b{escaped}\b', re.IGNORECASE)
+    return re.compile(rf'^{escaped}|{escaped}$')
 
-COMMON_WORD_PATTERNS = [build_word_pattern(word) for word in COMMON_SUFFIX_OR_PREFIX]
-COVER_PATTERNS = [build_word_pattern(word) for word in COVER_WORDS]
+COMMON_WORD_PATTERNS = [build_prefix_suffix_pattern(word) for word in COMMON_SUFFIX_OR_PREFIX]
+# Sometimes scammers put version number near token name to mis-represent it as a new version of well-known project
+# Based on TM-RugPull dataset naming patterns
+COVER_PATTERNS = [build_prefix_suffix_pattern(word) for word in COVER_WORDS] + [re.compile(r'v\d+$')]
+
+COMBINED_PATTERNS_TO_STRIP = COVER_PATTERNS + COMMON_WORD_PATTERNS
 
 # All project names and symbols are normalised before comparing similarity (remove spaces, punctuation)
 # to make names like 'safeETH', 'Safe ETH' and 'SAFE-eth' identical
-NORMALIZE_PATTERN = re.compile(r'[^a-z0-9]')
+NORMALISE_PATTERN = re.compile(r'[^a-z0-9]')
 
 # Files to read and write
 INPUT_FILE = '../data/TM-RugPull_with_LP_drain_code_detection.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
 # '../data/TM-RugPull_with_token_name_similarity.xlsx' was used in original experiment
 OUTPUT_FILE = "../data/TM-RugPull_with_token_name_similarity.xlsx"
+
+
+
+# Pre-process input (project names and symbols) to make them structurally identical (one low-case word)
+def normalise_string(string):
+    if not string:
+        return ''
+    return NORMALISE_PATTERN.sub('', string.lower())
+
+
+# Strip common and cover words from a string (a project name, since symbols does not stripping, they are relatively unique
+# short identifiers
+def strip_project_name(project_name):
+    stripped_project_name = project_name
+    is_changed = True
+    # Loops over stripped version to detect nesting common or cover words (like 'safebabyETH')
+    while is_changed:
+        is_changed = False
+        for pattern in COMBINED_PATTERNS_TO_STRIP:
+            new_stripped = pattern.sub('', stripped_project_name)
+            if new_stripped != stripped_project_name:
+                stripped_project_name = new_stripped
+                is_changed = True
+    return stripped_project_name
 
 
 # Levenshtein distance algorithm to compute similarity score was chosen, since it works well on relatively small strings,
