@@ -55,6 +55,10 @@ def build_word_pattern(word):
 COMMON_WORD_PATTERNS = [build_word_pattern(word) for word in COMMON_SUFFIX_OR_PREFIX]
 COVER_PATTERNS = [build_word_pattern(word) for word in COVER_WORDS]
 
+# All project names and symbols are normalised before comparing similarity (remove spaces, punctuation)
+# to make names like 'safeETH', 'Safe ETH' and 'SAFE-eth' identical
+NORMALIZE_PATTERN = re.compile(r'[^a-z0-9]')
+
 # Files to read and write
 INPUT_FILE = '../data/TM-RugPull_with_LP_drain_code_detection.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
@@ -62,11 +66,43 @@ INPUT_FILE = '../data/TM-RugPull_with_LP_drain_code_detection.xlsx'
 OUTPUT_FILE = "../data/TM-RugPull_with_token_name_similarity.xlsx"
 
 
-# TODO: choose and implement an algorithm for string comparison:
-# TODO: https://medium.com/data-science-collective/deep-dive-into-string-similarity-from-edit-distance-to-fuzzy-matching-theory-and-practice-in-68e214c0cb1d
+# Levenshtein distance algorithm to compute similarity score was chosen, since it works well on relatively small strings,
+# where prefixes also matter (in comparison with Jaro-Winkler algorithm which was also considered)
+# Reference: https://medium.com/data-science-collective/deep-dive-into-string-similarity-from-edit-distance-to-fuzzy-matching-theory-and-practice-in-68e214c0cb1d
+def count_levenshtein_distance(dataset_text, snapshot_text):
+    # Identical strings, no need to count distances
+    if dataset_text == snapshot_text:
+        return 0
+    dataset_text_length = len(dataset_text)
+    snapshot_text_length = len(snapshot_text)
+    # Compare with empty string results in each char to be inserted or deleted (= length of another string)
+    if dataset_text_length == 0:
+        return snapshot_text_length
+    if snapshot_text_length == 0:
+        return dataset_text_length
+
+    previous_edit_row = list(range(snapshot_text_length + 1))
+    for dataset_text_index, dataset_text_char in enumerate(dataset_text, start=1):
+        current_edit_row = [dataset_text_index] + [0] * snapshot_text_length
+        for snapshot_text_index, snapshot_text_char in enumerate(snapshot_text, start=1):
+            deletion_cost = previous_edit_row[snapshot_text_index] + 1
+            insertion_cost = current_edit_row[snapshot_text_index - 1] + 1
+            # No extra cost if the characters already match. Otherwise, 1 for substitution
+            substitution_cost = previous_edit_row[snapshot_text_index - 1] + (dataset_text_char != snapshot_text_char)
+            current_edit_row[snapshot_text_index] = min(deletion_cost, insertion_cost, substitution_cost)
+        previous_edit_row = current_edit_row
+
+    return previous_edit_row[snapshot_text_length]
+
+
+# To compare distances for pairs of different lengths normalisation is applied
+def normalise_levenshtein_similarity(dataset_text, snapshot_text):
+    longest_length = max(len(dataset_text), len(snapshot_text))
+    return 1 - count_levenshtein_distance(dataset_text, snapshot_text) / longest_length
 
 
 
+# TODO: read and parse .csv
 
 
 
