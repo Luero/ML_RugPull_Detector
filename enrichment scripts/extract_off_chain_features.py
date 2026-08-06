@@ -22,7 +22,7 @@ import csv
 import os
 from datetime import datetime
 
-from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
+from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook, parse_date
 import re
 
 
@@ -142,7 +142,7 @@ def compute_symbol_similarity(dataset_symbol, snapshot_symbol):
         if unwrapped_symbol == normalised_snapshot_symbol:
             is_wrapped = True
             return 0.0, is_wrapped
-    return normalise_levenshtein_similarity(normalise_string(dataset_symbol), normalised_snapshot_symbol)
+    return normalise_levenshtein_similarity(normalise_string(dataset_symbol), normalised_snapshot_symbol), is_wrapped
 
 
 # Compare project name from dataset with project name of top-200 tokens snapshot
@@ -209,17 +209,35 @@ def compare_and_interpret_final_score(dataset_project_name, dataset_symbol, data
     return round(best_score, 4)
 
 
+# Add similarity score to the .xlsx file
+def add_similarity_column(sheet, headings, snapshots):
+    project_name_col_idx = headings.index('Project Title')
+    symbol_col_idx = headings.index('Sign')
+    class_col_idx = headings.index('class')
+    start_date_col_idx = headings.index('project starting date')
 
+    result_col = sheet.max_column + 1
+    sheet.cell(row=1, column=result_col, value='Top200 name similarity')
 
-
+    for row in sheet.iter_rows(min_row=2):
+        dataset_project_name = row[project_name_col_idx].value
+        dataset_symbol = row[symbol_col_idx].value
+        dataset_class = row[class_col_idx].value
+        project_start_date = parse_date(row[start_date_col_idx].value)
+        if project_start_date is None:
+            continue
+        snapshot = get_relevant_snapshot(snapshots, project_start_date)
+        score = compare_and_interpret_final_score(dataset_project_name, dataset_symbol, dataset_class, snapshot)
+        print(f"{dataset_project_name}: {score}")
+        sheet.cell(row=row[0].row, column=result_col, value=score)
 
 
 def main():
     workbook, sheet = load_file(INPUT_FILE)
     headings = get_headings(sheet)
     snapshots = load_snapshots(SNAPSHOTS_DIR)
-
-    save_workbook(workbook, OUTPUT_FILE)
+    add_similarity_column(sheet, headings, snapshots)
+    # save_workbook(workbook, OUTPUT_FILE)
 
 
 if __name__ == "__main__":
