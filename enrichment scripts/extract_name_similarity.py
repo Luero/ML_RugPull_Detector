@@ -13,8 +13,9 @@
 #     that are commonly used by scammers to misrepresent connection with legitimate assets (like 'new' or 'safe') are stripped to avoid noise;
 # (3) Levenstein distance with normalisation is used as string similarity comparison algorithm, since prefixes matter in token names and symbols;
 # (4) wrapped versions of legitimate tokens return 0.0 similarity (the pattern is 'w' in the beginning of token symbol);
-# (5) tokens that are labeled as 'normal' within the dataset return 0.0 similarity (assuming these are exact top-200 tokens, not their 'mimics');
-# (5) names and symbols are compared against the snapshot which is closest to the project start date, but before the project launch, because
+# (5) self-matches with real tokens are allowed, since to distinguish normal token from scam a label should be used, but than the model will learn
+#     incorrect patterns;
+# (6) names and symbols are compared against the snapshot which is closest to the project start date, but before the project launch, because
 #     token can 'mimic' only coins that exist on time of its launch
 
 
@@ -69,7 +70,7 @@ SYMBOL_SIMILARITY_WEIGHT = 0.65
 INPUT_FILE = '../data/TM-RugPull_with_LP_drain_code_detection.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
 # '../data/TM-RugPull_with_token_name_similarity.xlsx' was used in original experiment
-OUTPUT_FILE = "../data/placeholder.xlsx"
+OUTPUT_FILE = "../data/TM-RugPull_with_token_name_similarity.xlsx"
 
 
 
@@ -129,9 +130,10 @@ def count_levenshtein_distance(dataset_text, snapshot_text):
 # To compare distances for pairs of different lengths normalisation is applied
 def normalise_levenshtein_similarity(dataset_text, snapshot_text):
     longest_length = max(len(dataset_text), len(snapshot_text))
-    # If two empty strings are compared (due to stripping), return 0.0 (a conservative scenario to avoid false positive similarity scores)
+    # If two empty strings are compared (due to stripping), return 1.0, since
+    # it means that they were both combined of common or cover words, so could be potential scam sign
     if longest_length == 0:
-        return 0.0
+        return 1.0
     return 1 - count_levenshtein_distance(dataset_text, snapshot_text) / longest_length
 
 
@@ -187,11 +189,9 @@ def get_relevant_snapshot(snapshots, project_start_date):
 
 
 # Compare project name and symbol from one row with each entry of relevant snapshot, interpret results of comparison
-def compare_and_interpret_final_score(dataset_project_name, dataset_symbol, dataset_class, snapshot):
-    # The dataset contains legitimate projects from top-200, so row scores will lead to 100% similarity, which will be misleading for the model
-    # Thus, if a project is labeled as 'normal', it is assumed that it is a legitimate project from top-200, not a misrepresentation
-    if dataset_class and str(dataset_class).strip().lower() == 'normal':
-        return 0.0
+# Allows self-match, since if forcing algorithm to return 0.0 score for all tokens that are labeled as 'normal', the model
+# will become biased, and this feature will be deterministic
+def compare_and_interpret_final_score(dataset_project_name, dataset_symbol, snapshot):
     # Check for placeholders instead of real symbols
     has_real_symbol = bool(dataset_symbol) and dataset_symbol.strip().upper() not in SYMBOL_PLACEHOLDERS
     best_score = 0.0
@@ -217,7 +217,6 @@ def compare_and_interpret_final_score(dataset_project_name, dataset_symbol, data
 def add_similarity_column(sheet, headings, snapshots):
     project_name_col_idx = headings.index('Project Title')
     symbol_col_idx = headings.index('Sign')
-    class_col_idx = headings.index('class')
     start_date_col_idx = headings.index('project starting date')
 
     result_col = sheet.max_column + 1
@@ -228,13 +227,12 @@ def add_similarity_column(sheet, headings, snapshots):
         dataset_symbol = row[symbol_col_idx].value
         # There is a pure numeric entry in the dataset, so convertion is necessary
         dataset_symbol = str(dataset_symbol)
-        dataset_class = row[class_col_idx].value
-        dataset_class = str(dataset_class)
+        dataset_symbol = '' if dataset_symbol is None else str(dataset_symbol)
         project_start_date = parse_date(row[start_date_col_idx].value)
         if project_start_date is None:
             continue
         snapshot = get_relevant_snapshot(snapshots, project_start_date)
-        score = compare_and_interpret_final_score(dataset_project_name, dataset_symbol, dataset_class, snapshot)
+        score = compare_and_interpret_final_score(dataset_project_name, dataset_symbol, snapshot)
         sheet.cell(row=row[0].row, column=result_col, value=score)
 
 

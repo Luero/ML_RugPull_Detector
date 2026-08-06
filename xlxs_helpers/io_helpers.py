@@ -9,7 +9,7 @@ from datetime import datetime
 # Load .xlsx file using OpenPyXL
 # Returns workbook and sheet from .xlcx file
 def load_file (file):
-    workbook = load_workbook(file)
+    workbook = load_workbook(file, data_only=True)
     sheet = workbook['Sheet1']
     return workbook, sheet
 
