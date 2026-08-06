@@ -9,10 +9,11 @@
 
 # Methodology to count similarity:
 # (1) project names and symbols both are assessed separately, and then their scores are combined with heuristic weight application;
-# (2) before comparison, each string is normalised to a single lowercase word, than common words like 'finance' or 'token' and words
+# (2) before comparison, each string is normalised to a single lowercase word, then common words like 'finance' or 'token' and words
 #     that are commonly used by scammers to misrepresent connection with legitimate assets (like 'new' or 'safe') are stripped to avoid noise;
-# (3) Levenstein distance with normalisation is used as string similarity comparison algorithm, since prefexes matter in token names and symbols;
-# (4) wrapped versions of legitimate tokens return 0.0 similarity (the pattern is 'w' in the beginning of token symbol)
+# (3) Levenstein distance with normalisation is used as string similarity comparison algorithm, since prefixes matter in token names and symbols;
+# (4) wrapped versions of legitimate tokens return 0.0 similarity (the pattern is 'w' in the beginning of token symbol);
+# (5) tokens that are labeled as 'normal' within the dataset return 0.0 similarity (assuming these are exact top-200 tokens, not their 'mimics');
 # (5) names and symbols are compared against the snapshot which is closest to the project start date, but before the project launch, because
 #     token can 'mimic' only coins that exist on time of its launch
 
@@ -133,12 +134,14 @@ def normalise_levenshtein_similarity(dataset_text, snapshot_text):
 # Compare token symbols from dataset and snapshot of top-200 tokens
 def compute_symbol_similarity(dataset_symbol, snapshot_symbol):
     normalised_snapshot_symbol = normalise_string(snapshot_symbol)
+    is_wrapped = False
     # Since wrapped tokens are legitimate, returns 0.0 similarity score, if the only difference from top-200 tokens
     # is leading 'w'. Assumes that in this case dataset contains a legitimate top-200 token entry
     if WRAPPED_TICKER_PREFIX_PATTERN.match(dataset_symbol):
         unwrapped_symbol = normalise_string(dataset_symbol.strip()[1:])
         if unwrapped_symbol == normalised_snapshot_symbol:
-            return 0.0
+            is_wrapped = True
+            return 0.0, is_wrapped
     return normalise_levenshtein_similarity(normalise_string(dataset_symbol), normalised_snapshot_symbol)
 
 
@@ -167,6 +170,43 @@ def load_snapshots(snapshot_dir):
             snapshots[datetime(snapshot_year, snapshot_month, snapshot_day)] = [(row['name'], row['symbol']) for row in reader]
     return snapshots
 
+
+# Get snapshot which is the closest to the project's starting date, but before this date (since if a project aim to mimic some
+# legitimate token, this token should have been already launched)
+def get_relevant_snapshot(snapshots, project_start_date):
+    if not snapshots:
+        return None
+    dates_before = [snapshot_date for snapshot_date in snapshots if snapshot_date <= project_start_date]
+    if not dates_before:
+        return snapshots[min(snapshots)]
+    return snapshots[max(dates_before)]
+
+
+# Compare project name and symbol from one row with each entry of relevant snapshot, interpret results of comparison
+def compare_and_interpret_final_score(dataset_project_name, dataset_symbol, dataset_class, snapshot):
+    # The dataset contains legitimate projects from top-200, so row scores will lead to 100% similarity, which will be misleading for the model
+    # Thus, if a project is labeled as 'normal', it is assumed that it is a legitimate project from top-200, not a misrepresentation
+    if dataset_class and str(dataset_class).strip().lower() == 'normal':
+        return 0.0
+    # Check for placeholders instead of real symbols
+    has_real_symbol = bool(dataset_symbol) and dataset_symbol.strip().upper() not in SYMBOL_PLACEHOLDERS
+    best_score = 0.0
+    for snapshot_project_name, snapshot_symbol in snapshot:
+        project_name_similarity = compute_project_name_similarity(dataset_project_name, snapshot_project_name)
+        if has_real_symbol:
+            symbol_similarity, is_wrapped = compute_symbol_similarity(dataset_symbol, snapshot_symbol)
+            # If a token is wrapped version of legitimate token, overall similarity score is forced to 0.0, since
+            # even if it is labeled as scam, similar project name or symbol is not a representative feature in such case
+            if is_wrapped:
+                final_score = 0.0
+            else:
+                final_score = compute_combined_similarity(project_name_similarity, symbol_similarity)
+        # If there is no symbol in the dataset (only a placeholder), a score is determined by project's name result
+        else:
+            final_score = project_name_similarity * PROJECT_NAME_SIMILARITY_WEIGHT
+        best_score = max(best_score, final_score)
+    # Return the score with the best match
+    return round(best_score, 4)
 
 
 
