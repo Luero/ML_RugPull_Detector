@@ -31,7 +31,7 @@ import re
 SYMBOL_PLACEHOLDERS = {'BEP-20 TOKEN', 'ERC-20 TOKEN', 'ERC20', 'BEP20 TOKEN'}
 
 # 'w' as a prefix to token symbol is a sign that it is a wrapped version of this token, it is legitimate
-# A common convention is lower 'w', but dataset has leginimate entries with 'W', so regex is case-insensitive
+# A common convention is lower 'w', but dataset has legitimate entries with 'W', so regex is case-insensitive
 WRAPPED_TICKER_PREFIX_PATTERN = re.compile(r'^w', re.IGNORECASE)
 
 # Strings that could appear in both scam and legitimate tokens as suffixes, prefixes or separate words in project names
@@ -77,11 +77,12 @@ OUTPUT_FILE = "../data/TM-RugPull_with_token_name_similarity.xlsx"
 def normalise_string(string):
     if not string:
         return ''
+    # There is a pure numeric entry in the dataset, so convertion is necessary
+    string = str(string)
     return NORMALISE_PATTERN.sub('', string.lower())
 
 
-# Strip common and cover words from a string (a project name, since symbols does not stripping, they are relatively unique
-# short identifiers
+# Strip common and cover words from a string (a project name, since symbols are relatively unique short identifiers)
 def strip_project_name(project_name):
     stripped_project_name = project_name
     is_changed = True
@@ -128,6 +129,9 @@ def count_levenshtein_distance(dataset_text, snapshot_text):
 # To compare distances for pairs of different lengths normalisation is applied
 def normalise_levenshtein_similarity(dataset_text, snapshot_text):
     longest_length = max(len(dataset_text), len(snapshot_text))
+    # If two empty strings are compared (due to stripping), return 0.0 (a conservative scenario to avoid false positive similarity scores)
+    if longest_length == 0:
+        return 0.0
     return 1 - count_levenshtein_distance(dataset_text, snapshot_text) / longest_length
 
 
@@ -222,13 +226,15 @@ def add_similarity_column(sheet, headings, snapshots):
     for row in sheet.iter_rows(min_row=2):
         dataset_project_name = row[project_name_col_idx].value
         dataset_symbol = row[symbol_col_idx].value
+        # There is a pure numeric entry in the dataset, so convertion is necessary
+        dataset_symbol = str(dataset_symbol)
         dataset_class = row[class_col_idx].value
+        dataset_class = str(dataset_class)
         project_start_date = parse_date(row[start_date_col_idx].value)
         if project_start_date is None:
             continue
         snapshot = get_relevant_snapshot(snapshots, project_start_date)
         score = compare_and_interpret_final_score(dataset_project_name, dataset_symbol, dataset_class, snapshot)
-        print(f"{dataset_project_name}: {score}")
         sheet.cell(row=row[0].row, column=result_col, value=score)
 
 
@@ -237,7 +243,7 @@ def main():
     headings = get_headings(sheet)
     snapshots = load_snapshots(SNAPSHOTS_DIR)
     add_similarity_column(sheet, headings, snapshots)
-    # save_workbook(workbook, OUTPUT_FILE)
+    save_workbook(workbook, OUTPUT_FILE)
 
 
 if __name__ == "__main__":
