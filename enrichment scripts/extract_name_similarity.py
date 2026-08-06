@@ -9,12 +9,12 @@
 
 # Methodology to count similarity:
 # (1) project names and symbols both are assessed separately, and then their scores are combined with heuristic weight application;
-# (2) before comparison, each string is normalised to a single lowercase word, then common words like 'finance' or 'token' and words
+# (2) maximum combined similarity score is saved as a feature;
+# (3) before comparison, each string is normalised to a single lowercase word, then common words like 'finance' or 'token' and words
 #     that are commonly used by scammers to misrepresent connection with legitimate assets (like 'new' or 'safe') are stripped to avoid noise;
-# (3) Levenstein distance with normalisation is used as string similarity comparison algorithm, since prefixes matter in token names and symbols;
-# (4) wrapped versions of legitimate tokens return 0.0 similarity (the pattern is 'w' in the beginning of token symbol);
-# (5) self-matches with real tokens are allowed, since to distinguish normal token from scam a label should be used, but than the model will learn
-#     incorrect patterns;
+# (4) Levenstein distance with normalisation is used as string similarity comparison algorithm, since prefixes matter in token names and symbols;
+# (5) self-matches with real tokens are allowed, since to distinguish normal token from scam a label should be used, but then the model will learn
+#     incorrect patterns; the computed feature is aimed to represent similarity, not a conclusive answer whether a token is legitimate one;
 # (6) names and symbols are compared against the snapshot which is closest to the project start date, but before the project launch, because
 #     token can 'mimic' only coins that exist on time of its launch
 
@@ -30,10 +30,6 @@ import re
 # For some tokens the dataset uses placeholders instead of real symbols
 # They were excluded from similarity analysis to avoid noise
 SYMBOL_PLACEHOLDERS = {'BEP-20 TOKEN', 'ERC-20 TOKEN', 'ERC20', 'BEP20 TOKEN'}
-
-# 'w' as a prefix to token symbol is a sign that it is a wrapped version of this token, it is legitimate
-# A common convention is lower 'w', but dataset has legitimate entries with 'W', so regex is case-insensitive
-WRAPPED_TICKER_PREFIX_PATTERN = re.compile(r'^w', re.IGNORECASE)
 
 # Strings that could appear in both scam and legitimate tokens as suffixes, prefixes or separate words in project names
 COMMON_SUFFIX_OR_PREFIX = ['finance', 'crypto', 'token', 'coin', 'fork', 'play', 'cash', 'fund', 'trade', 'swap', 'tech',
@@ -63,15 +59,14 @@ SNAPSHOTS_DIR = '../data/top-200_token_snapshots'
 SNAPSHOT_FILENAME_PATTERN = re.compile(r'^(\d{4})_(\d{2})_(\d{2})_top200_snapshot\.csv$')
 
 # Symbol weighted higher than name, since almost identical symbol is a stronger and more misleading signal
-PROJECT_NAME_SIMILARITY_WEIGHT = 0.35
-SYMBOL_SIMILARITY_WEIGHT = 0.65
+PROJECT_NAME_SIMILARITY_WEIGHT = 0.3
+SYMBOL_SIMILARITY_WEIGHT = 0.7
 
 # Files to read and write
 INPUT_FILE = '../data/TM-RugPull_with_LP_drain_code_detection.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
-# '../data/TM-RugPull_with_token_name_similarity.xlsx' was used in original experiment
-OUTPUT_FILE = "../data/TM-RugPull_with_token_name_similarity.xlsx"
-
+# '../data/TM-RugPull_enriched_v.1.0.xlsx' was used in original experiment
+OUTPUT_FILE = "../data/placeholder.xlsx"
 
 
 # Pre-process input (project names and symbols) to make them structurally identical (one low-case word)
@@ -130,25 +125,17 @@ def count_levenshtein_distance(dataset_text, snapshot_text):
 # To compare distances for pairs of different lengths normalisation is applied
 def normalise_levenshtein_similarity(dataset_text, snapshot_text):
     longest_length = max(len(dataset_text), len(snapshot_text))
-    # If two empty strings are compared (due to stripping), return 1.0, since
-    # it means that they were both combined of common or cover words, so could be potential scam sign
+    # If two empty strings are compared (due to stripping), return 0.0 to avoid false positive results
     if longest_length == 0:
-        return 1.0
+        return 0.0
     return 1 - count_levenshtein_distance(dataset_text, snapshot_text) / longest_length
 
 
 # Compare token symbols from dataset and snapshot of top-200 tokens
 def compute_symbol_similarity(dataset_symbol, snapshot_symbol):
     normalised_snapshot_symbol = normalise_string(snapshot_symbol)
-    is_wrapped = False
-    # Since wrapped tokens are legitimate, returns 0.0 similarity score, if the only difference from top-200 tokens
-    # is leading 'w'. Assumes that in this case dataset contains a legitimate top-200 token entry
-    if WRAPPED_TICKER_PREFIX_PATTERN.match(dataset_symbol):
-        unwrapped_symbol = normalise_string(dataset_symbol.strip()[1:])
-        if unwrapped_symbol == normalised_snapshot_symbol:
-            is_wrapped = True
-            return 0.0, is_wrapped
-    return normalise_levenshtein_similarity(normalise_string(dataset_symbol), normalised_snapshot_symbol), is_wrapped
+    normalised_dataset_symbol = normalise_string(dataset_symbol)
+    return normalise_levenshtein_similarity(normalised_dataset_symbol, normalised_snapshot_symbol)
 
 
 # Compare project name from dataset with project name of top-200 tokens snapshot
@@ -198,13 +185,8 @@ def compare_and_interpret_final_score(dataset_project_name, dataset_symbol, snap
     for snapshot_project_name, snapshot_symbol in snapshot:
         project_name_similarity = compute_project_name_similarity(dataset_project_name, snapshot_project_name)
         if has_real_symbol:
-            symbol_similarity, is_wrapped = compute_symbol_similarity(dataset_symbol, snapshot_symbol)
-            # If a token is wrapped version of legitimate token, overall similarity score is forced to 0.0, since
-            # even if it is labeled as scam, similar project name or symbol is not a representative feature in such case
-            if is_wrapped:
-                final_score = 0.0
-            else:
-                final_score = compute_combined_similarity(project_name_similarity, symbol_similarity)
+            symbol_similarity = compute_symbol_similarity(dataset_symbol, snapshot_symbol)
+            final_score = compute_combined_similarity(project_name_similarity, symbol_similarity)
         # If there is no symbol in the dataset (only a placeholder), a score is determined by project's name result
         else:
             final_score = project_name_similarity * PROJECT_NAME_SIMILARITY_WEIGHT
@@ -233,6 +215,7 @@ def add_similarity_column(sheet, headings, snapshots):
             continue
         snapshot = get_relevant_snapshot(snapshots, project_start_date)
         score = compare_and_interpret_final_score(dataset_project_name, dataset_symbol, snapshot)
+        print(f"{dataset_symbol}: {score}")
         sheet.cell(row=row[0].row, column=result_col, value=score)
 
 
