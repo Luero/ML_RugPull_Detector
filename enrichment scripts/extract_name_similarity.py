@@ -69,7 +69,7 @@ SYMBOL_SIMILARITY_WEIGHT = 0.65
 INPUT_FILE = '../data/TM-RugPull_with_LP_drain_code_detection.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
 # '../data/TM-RugPull_with_token_name_similarity.xlsx' was used in original experiment
-OUTPUT_FILE = "../data/TM-RugPull_with_token_name_similarity.xlsx"
+OUTPUT_FILE = "../data/placeholder.xlsx"
 
 
 
