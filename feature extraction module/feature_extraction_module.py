@@ -24,7 +24,7 @@ def extract_onchain_features(chain, token_address):
     # Retrieve latest Arbitrum block to avoid race conditions for multiple users and caching results for live queries, since
     # timing is crucial for them
     latest_arbitrum_block = get_latest_block('ARBI') if chain == 'ARBI' else None
-    holder_snapshots = get_holders_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS)
+    holder_snapshots = get_holders_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS, latest_arbitrum_block)
 
 
 

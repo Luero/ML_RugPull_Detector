@@ -6,9 +6,6 @@ from feature_extraction_helpers.config import NODEREAL_BLOCK_RANGE_SIZE, ETH_LOG
 from feature_extraction_helpers.general_onchain_helpers import query_etherscan, query_meganode, \
     get_deployment_block_and_timestamp, get_latest_block, find_block_by_timestamp, hours_to_blocks
 
-# Global variable to retrieve only once during enrichment phase (to reduce number of API calls)
-LATEST_ARBITRUM_BLOCK = None
-
 
 # Extract all transfer event logs between from_block and to_block, chunked due to API limits
 def get_transfer_logs(chain, token_address, from_block, to_block):
@@ -164,17 +161,14 @@ def count_holders_for_snapshots(logs, target_blocks):
 
 
 # Per-token snapshot extraction
-def get_holders_snapshots(chain, token_address, time_for_snapshot_hours):
+def get_holders_snapshots(chain, token_address, time_for_snapshot_hours, latest_arbitrum_block=None):
     deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, token_address)
     if deployment_block is None:
         return {f"Holders_{h}h": math.nan for h in time_for_snapshot_hours}
 
     if chain == 'ARBI':
-        global LATEST_ARBITRUM_BLOCK
-        if LATEST_ARBITRUM_BLOCK is None:
-            LATEST_ARBITRUM_BLOCK = get_latest_block(chain)
         # Blocks with timestamp closest to snapshots intervals
-        target_blocks = {h: find_block_by_timestamp(chain, deployment_timestamp + h * 3600, deployment_block, LATEST_ARBITRUM_BLOCK) for h in time_for_snapshot_hours}
+        target_blocks = {h: find_block_by_timestamp(chain, deployment_timestamp + h * 3600, deployment_block, latest_arbitrum_block) for h in time_for_snapshot_hours}
     else:
         # Approximate number of blocks for each snapshot interval
         block_offsets = {h: hours_to_blocks(chain, h, deployment_timestamp) for h in time_for_snapshot_hours}

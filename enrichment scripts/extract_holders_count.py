@@ -16,14 +16,11 @@
 
 from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
 from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
+from feature_extraction_helpers.general_onchain_helpers import get_latest_block
 
 
 # Time for snapshots in hours
 TIME_FOR_SNAPSHOTS_HOURS = (1, 4, 12, 24)
-
-# Global variable to retrieve only once during enrichment phase (to reduce number of API calls)
-LATEST_ARBITRUM_BLOCK = None
-
 
 # Files to read and write
 INPUT_FILE = '../data/TM-RugPull_with_project_period.xlsx'
@@ -41,12 +38,14 @@ def add_holder_snapshots_columns(sheet, headings):
     for i, h in enumerate(TIME_FOR_SNAPSHOTS_HOURS):
         sheet.cell(row=1, column=start_col + i, value=f"Holders_{h}h")
 
+    latest_arbitrum_block = get_latest_block('ARBI')
+
     for row in sheet.iter_rows(min_row=2):
         token_address = row[address_col_idx].value
         chain = row[chain_col_idx].value
         if not token_address or not chain:
             continue
-        snapshots = get_holders_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS)
+        snapshots = get_holders_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS, latest_arbitrum_block)
         print(f"{token_address}: {snapshots}")
         for i, h in enumerate(TIME_FOR_SNAPSHOTS_HOURS):
             sheet.cell(row=row[0].row, column=start_col + i, value=snapshots.get(f"Holders_{h}h"))
