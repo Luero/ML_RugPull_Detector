@@ -16,8 +16,6 @@ from feature_extraction_helpers.general_onchain_helpers import get_latest_block,
 from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
 
 
-# Time for snapshots in hours (only snapshots that are used by the model)
-TIME_FOR_SNAPSHOTS_HOURS = (12, 24)
 # Based on TM-RugPull methodology
 LIVE_THRESHOLD_HOURS = 72
 
@@ -42,6 +40,7 @@ def is_token_live(chain, token_address):
 def get_project_period_days(chain, token_address):
     deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, token_address)
     if deployment_block is None:
+        print(f"No deployment block found for {token_address} on {chain}")
         return None
 
     start_date = datetime.fromtimestamp(deployment_timestamp, tz=timezone.utc)
@@ -58,14 +57,15 @@ def get_project_period_days(chain, token_address):
     return (end_date - start_date).days
 
 
-
-# TODO: latest arbitrum block cached?
-# General function to retrieve all on-chain features for a queried token
-def extract_onchain_features(chain, token_address):
-    # Retrieve latest Arbitrum block to avoid race conditions for multiple users and caching results for live queries, since
-    # timing is crucial for them
+# Extract 'Holders_12h', 'Holders_24h' features
+def get_holders_count_snapshots(chain, token_address):
     latest_arbitrum_block = get_latest_block('ARBI') if chain == 'ARBI' else None
-    holder_snapshots = get_holders_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS, latest_arbitrum_block)
+    # Time for snapshots in hours that are used by the model
+    time_for_snapshots_hours = (12, 24)
+    snapshots = get_holders_snapshots(chain, token_address, time_for_snapshots_hours, latest_arbitrum_block)
+    return snapshots
+
+
 
 
 
@@ -73,8 +73,10 @@ def extract_onchain_features(chain, token_address):
 
 
 def main():
-    result = get_project_period_days('ETH', '0xb62132e35a6c13ee1ee0f84dc5d40bad8d815206')
+    result = get_project_period_days('POLYGON', '0xe50fA9b3c56FfB159cB0FCA61F5c9D750e8128c8')
     print(result)
+    snapshots = get_holders_count_snapshots('POLYGON', '0xe50fA9b3c56FfB159cB0FCA61F5c9D750e8128c8')
+    print(snapshots)
 
 
 if __name__ == "__main__":
