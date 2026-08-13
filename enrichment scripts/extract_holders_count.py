@@ -20,24 +20,12 @@ import math
 import time
 
 import requests
-from dotenv import load_dotenv
 
+from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN_API_KEY, CHAIN_IDS, ETHERSCAN_BASE_URL, \
+    NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, NODEREAL_BLOCK_RANGE_SIZE, ETH_LOG_RESULT_LIMIT, TRANSFER_EVENT_HASH
 from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
 
-load_dotenv()
 
-# Sources of data
-# https://docs.etherscan.io/api-reference
-ETHERSCAN_API_KEY = os.getenv('ETHERSCAN_API_KEY')
-ETHERSCAN_BASE_URL = 'https://api.etherscan.io/v2/api'
-
-# https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
-NODEREAL_API_KEY = os.getenv('NODEREAL_API_KEY')
-MEGANODE_BSC_URL = (f'https://bsc-mainnet.nodereal.io/v1/{NODEREAL_API_KEY}')
-
-# IDs of chains supported by Etherscan and relevant for the dataset
-# Reference: https://docs.etherscan.io/supported-chains
-CHAIN_IDS = {'ETH': 1, 'POLYGON': 137, 'ARBI': 42161}
 
 # Time for snapshots in hours and approximation of average block time in seconds for each network
 TIME_FOR_SNAPSHOTS_HOURS = (1, 4, 12, 24)
@@ -61,17 +49,7 @@ BLOCK_TIME_PERIODS = {
 }
 LATEST_ARBITRUM_BLOCK = None
 
-# https://www.4byte.directory/event-signatures/?bytes_signature=0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
-TRANSFER_EVENT_HASH = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 
-# Etherscan free-tier limit on records per getLogs call: https://docs.etherscan.io/changelog
-ETH_LOG_RESULT_LIMIT = 1000
-# NodeReal limitations for block range size and number of records returned: https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
-NODEREAL_BLOCK_RANGE_SIZE = 49000
-
-# API limitations for calls per time
-ETHERSCAN_TIME_INTERVAL = 0.35
-NODEREAL_TIME_INTERVAL = 0.20
 
 # Files to read and write
 INPUT_FILE = '../data/TM-RugPull_with_project_period.xlsx'

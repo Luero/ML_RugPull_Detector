@@ -49,7 +49,7 @@ COMMON_WORD_PATTERNS = [build_prefix_suffix_pattern(word) for word in COMMON_SUF
 # Based on TM-RugPull dataset naming patterns
 COVER_PATTERNS = [build_prefix_suffix_pattern(word) for word in COVER_WORDS] + [re.compile(r'v\d+$')]
 
-COMBINED_PATTERNS_TO_STRIP = COVER_PATTERNS + COMMON_WORD_PATTERNS
+COMBINED_PATTERNS_TO_STRIP = COMMON_WORD_PATTERNS + COVER_PATTERNS
 
 # All project names and symbols are normalised before comparing similarity (remove spaces, punctuation)
 # to make names like 'safeETH', 'Safe ETH' and 'SAFE-eth' identical
