@@ -98,11 +98,21 @@ def get_deployment_block_and_timestamp_bsc(token_address):
 
 # Get latest block number for a chain, used for Arbitrum tokens as the binary search upper bound
 # https://docs.etherscan.io/api-reference/endpoint/ethblocknumber
-def get_latest_block(chain):
+def get_latest_block_eth(chain):
     data = query_etherscan(chain, {'module': 'proxy', 'action': 'eth_blockNumber'})
     if data is None:
         return None
     return int(data['result'], 16)
+
+
+# Get latest block number and timestamp for all supported networks
+def get_latest_block_with_timestamp(chain):
+    if chain == 'BSC':
+        # TODO: NodeReal implementation
+        raise NotImplementedError()
+    latest_block = get_latest_block_eth(chain)
+    latest_block_timestamp = datetime.fromtimestamp(get_block_timestamp(chain, latest_block), tz=timezone.utc)
+    return latest_block, latest_block_timestamp
 
 
 # Binary search for Arbitrum tokens: search for block closest to to_timestamp

@@ -16,7 +16,7 @@
 
 from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
 from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
-from feature_extraction_helpers.general_onchain_helpers import get_latest_block
+from feature_extraction_helpers.general_onchain_helpers import get_latest_block_eth
 
 
 # Time for snapshots in hours
@@ -38,7 +38,7 @@ def add_holder_snapshots_columns(sheet, headings):
     for i, h in enumerate(TIME_FOR_SNAPSHOTS_HOURS):
         sheet.cell(row=1, column=start_col + i, value=f"Holders_{h}h")
 
-    latest_arbitrum_block = get_latest_block('ARBI')
+    latest_arbitrum_block = get_latest_block_eth('ARBI')
 
     for row in sheet.iter_rows(min_row=2):
         token_address = row[address_col_idx].value

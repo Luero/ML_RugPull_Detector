@@ -4,7 +4,7 @@ import math
 
 from feature_extraction_helpers.config import NODEREAL_BLOCK_RANGE_SIZE, ETH_LOG_RESULT_LIMIT, TRANSFER_EVENT_HASH
 from feature_extraction_helpers.general_onchain_helpers import query_etherscan, query_meganode, \
-    get_deployment_block_and_timestamp, get_latest_block, find_block_by_timestamp, hours_to_blocks
+    get_deployment_block_and_timestamp, get_latest_block_eth, find_block_by_timestamp, hours_to_blocks
 
 
 # Extract all transfer event logs between from_block and to_block, chunked due to API limits
