@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE
 from feature_extraction_helpers.general_onchain_helpers import get_latest_block_eth, query_etherscan, \
     get_deployment_block_and_timestamp, get_latest_block_with_timestamp
-from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
+from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots, get_transfer_logs
 from feature_extraction_helpers.config import ETH_LOG_RESULT_LIMIT
 from feature_extraction_helpers.general_onchain_helpers import query_etherscan
 
@@ -88,13 +88,22 @@ def get_blockchain_type(chain):
 # Total number of on-chain token transfer transactions, as described in TM-RugPull methodology,
 # is calculated with unique transactionHash values
 def get_number_of_transactions(chain, token_address, deployment_block, latest_block):
-    if chain == 'BSC':
-        # TODO: implement for BSC
-        raise NotImplementedError()
+    if deployment_block is None:
+        print(f"No deployment block found for {token_address} on {chain}")
+        return None
+    logs, had_failure = get_transfer_logs(chain, token_address, int(deployment_block), int(latest_block))
+    if had_failure:
+        print(f"Log failure for {token_address}")
+        return None
+    unique_tx_hashes = {log['transactionHash'] for log in logs}
+
+    return len(unique_tx_hashes)
 
 
-# Token concentration ratio per holder
-# TODO: reconstruct methodology for the dataset
+# Extract token concentration ratio
+# Token concentration ratio feature is described in TM-RugPull methodology as concentration ratio among top-1% holders
+# However, attempts to reconstruct numbers using this approach failed, and web search showed that values of this feature
+# are more likely number of holders, not a concentration ratio
 def get_token_concentration_ratio(chain, token_address):
     if chain == 'BSC':
         # TODO: implement for BSC
@@ -106,11 +115,11 @@ def get_onchain_features_live(chain, token_address):
     latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
     deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, token_address)
     project_period_days = get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp)
-    snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS)
+  #  snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS)
     blockchain_type = get_blockchain_type(chain)
     number_of_transactions = get_number_of_transactions(chain, token_address, deployment_block, latest_block)
     print("project_period_days:", project_period_days)
-    print("snapshots:", snapshots)
+ #   print("snapshots:", snapshots)
     print("blockchain_type:", blockchain_type)
     print("number_of_transactions:", number_of_transactions)
 
