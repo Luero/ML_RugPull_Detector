@@ -36,6 +36,10 @@ ETHERSCAN_TIME_INTERVAL = 0.35
 NODEREAL_TIME_INTERVAL = 0.20
 
 
+# Mapping between blockchain and consensus type
+NETWORK_TO_BLOCKCHAIN_TYPE = {'ETH': 'POS', 'BSC': 'POSA', 'ARBI': 'Fraud Proofs', 'POLYGON': 'POS'}
+
+
 # TODO: extend to reuse for current tokens
 # For ETH: before September 2022 - 14.52 sec, after - 12.07 sec (mean calculated based on official Etherscan data: https://etherscan.io/chart/blocktime)
 # For BSC: before April 2025 - 3.01 sec (mean calculated based on official Bscscan data: https://bscscan.com/chart/blocktime)

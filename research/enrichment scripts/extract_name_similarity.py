@@ -63,10 +63,10 @@ PROJECT_NAME_SIMILARITY_WEIGHT = 0.3
 SYMBOL_SIMILARITY_WEIGHT = 0.7
 
 # Files to read and write
-INPUT_FILE = '../data/TM-RugPull_with_LP_drain_code_detection.xlsx'
+INPUT_FILE = '../research/data/TM-RugPull_with_LP_drain_code_detection.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
 # '../data/TM-RugPull_enriched_v.1.0.xlsx' was used in original experiment
-OUTPUT_FILE = "../data/placeholder.xlsx"
+OUTPUT_FILE = "../research/data/placeholder.xlsx"
 
 
 # Pre-process input (project names and symbols) to make them structurally identical (one low-case word)

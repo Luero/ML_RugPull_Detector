@@ -9,7 +9,7 @@ from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook, pars
 INPUT_FILE = '../data/TM-RugPull_prepared_for_enrichment.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
 # was '../data/TM-RugPull_prepared_for_enrichment.xlxs' in original experiment
-OUTPUT_FILE = "../data/placeholder.xlsx"
+OUTPUT_FILE = "../research/data/placeholder.xlsx"
 
 
 # Calculate duration of a project in days

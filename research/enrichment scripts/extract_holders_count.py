@@ -23,10 +23,10 @@ from feature_extraction_helpers.general_onchain_helpers import get_latest_block
 TIME_FOR_SNAPSHOTS_HOURS = (1, 4, 12, 24)
 
 # Files to read and write
-INPUT_FILE = '../data/TM-RugPull_with_project_period.xlsx'
+INPUT_FILE = '../research/data/TM-RugPull_with_project_period.xlsx'
 # A placeholder file to safe from re-writing anything already computed,
 # '../data/TM-RugPull_with_holder_count_snapshots.xlsx' was used in original experiment
-OUTPUT_FILE = "../data/placeholder.xlsx"
+OUTPUT_FILE = "../research/data/placeholder.xlsx"
 
 
 # Save snapshots to an .xlxs file
