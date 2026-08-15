@@ -14,9 +14,15 @@ ETHERSCAN_BASE_URL = 'https://api.etherscan.io/v2/api'
 # https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
 NODEREAL_API_KEY = os.getenv('NODEREAL_API_KEY')
 MEGANODE_BSC_URL = (f'https://bsc-mainnet.nodereal.io/v1/{NODEREAL_API_KEY}')
-
+# https://docs.moralis.com/data-api/evm/token/holders/token-holder-stats
 MORALIS_BASE_URL = "https://deep-index.moralis.io/api/v2.2"
 MORALIS_API_KEY = os.getenv('MORALIS_API_KEY')
+# https://docs.blockscout.com/api-reference/smart-contracts/get-count-statistics-new-&-newly-verified-for-deployed-smart-contracts
+BLOCKSCOUT_BASE_URLS = {
+    "ETH": "https://eth.blockscout.com",
+    "ARBI": "https://arbitrum.blockscout.com",
+    "POLYGON": "https://polygon.blockscout.com",
+}
 
 
 # IDs of chains supported by Etherscan and relevant for the dataset
