@@ -17,12 +17,13 @@
 from datetime import datetime, timezone
 
 import requests
+import time
 
 from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, MORALIS_BASE_URL, \
-    MORALIS_API_KEY, ETH_LOG_RESULT_LIMIT, BLOCKSCOUT_BASE_URLS
-from feature_extraction_helpers.general_onchain_helpers import get_latest_block_eth, query_etherscan, \
+    MORALIS_API_KEY, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS
+from feature_extraction_helpers.general_onchain_helpers import get_latest_block_eth, \
     get_deployment_block_and_timestamp, get_latest_block_with_timestamp
-from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots, get_transfer_logs
+from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
 from feature_extraction_helpers.general_onchain_helpers import query_etherscan
 
 
@@ -96,21 +97,32 @@ def get_token_counters(chain, token_address):
     if base_url is None:
         print(f"No Blockscout instance configured for {chain}")
         return None
-    try:
-        response = requests.get(f"{base_url}/api/v2/tokens/{token_address}/counters", timeout=30)
-    except requests.RequestException as e:
-        print(f"Request error for {token_address}: {e}")
-        return None
-    if response.status_code != 200:
-        print(f"HTTP {response.status_code} for {token_address}: {response.text}")
-        return None
-    return response.json()
+    for attempt in range(1, BLOCKSCOUT_MAX_RETRIES + 1):
+        try:
+            response = requests.get(f"{base_url}/api/v2/tokens/{token_address}/counters", timeout=30)
+        except requests.RequestException as e:
+            print(f"Request error for {token_address} (attempt {attempt}/{BLOCKSCOUT_MAX_RETRIES}): {e}")
+            if attempt < BLOCKSCOUT_MAX_RETRIES:
+                time.sleep(BLOCKSCOUT_RETRY_DELAY_SECONDS)
+                continue
+            return None
+        if response.status_code == 200:
+            return response.json()
+        print(f"HTTP {response.status_code} for {token_address} (attempt {attempt}/{BLOCKSCOUT_MAX_RETRIES}): {response.text}")
+        if attempt < BLOCKSCOUT_MAX_RETRIES:
+            time.sleep(BLOCKSCOUT_RETRY_DELAY_SECONDS)
+
+    return None
 
 
 # Extract 'the number of Transactions' feature, which appear to be transfer count for the token lifetime, based on TM-RugPull dataset
+# For each supported chain except BSC uses Blockscout free API
 # Reference: https://docs.blockscout.com/api-reference/smart-contracts/get-count-statistics-new-&-newly-verified-for-deployed-smart-contracts
 def get_number_of_transactions(chain, token_address):
     print("Number of transactions are calculating...")
+    if chain == 'BSC':
+        # TODO: find a source for BSC
+        raise NotImplementedError()
     counters = get_token_counters(chain, token_address)
     if counters is None:
         return None
@@ -122,15 +134,29 @@ def get_number_of_transactions(chain, token_address):
     return int(transfers_count)
 
 
-# Extract token holder count at the time of query or project end date (if is_token_live == False)
-# Reference: https://docs.moralis.com/data-api/evm/token/holders/token-holder-stats
-# TODO: try to find frequency of indexing
+# Extract 'Token holder count' feature for all supported chains
+# For all chains except BSC uses Blockscout cached results
 def get_current_token_holder_count(chain, token_address):
     print("Current token holders number is calculating...")
-    moralis_chain = MORALIS_CHAIN_IDS.get(chain)
-    if moralis_chain is None:
-        print(f"Unsupported chain {chain} for Moralis holder stats endpoint")
+    if chain == 'BSC':
+        return get_current_token_holder_count_bsc(token_address)
+    counters = get_token_counters(chain, token_address)
+    if counters is None:
         return None
+    holders_count = counters.get("token_holders_count")
+    if holders_count is None:
+        print(f"No token_holders_count field for {token_address}")
+        return None
+
+    return int(holders_count)
+
+
+# Extract token holder count at the time of query for BSC tokens, uses Moralis free API with indexed number
+# Reference: https://docs.moralis.com/data-api/evm/token/holders/token-holder-stats
+# TODO: try to find frequency of indexing
+# TODO: maybe use for Arbitrum, too (strange results from Blockscout)
+def get_current_token_holder_count_bsc(token_address):
+    moralis_chain = MORALIS_CHAIN_IDS.get('BSC')
     try:
         response = requests.get(
             f"{MORALIS_BASE_URL}/erc20/{token_address}/holders",
@@ -161,16 +187,12 @@ def get_onchain_features_live(chain, token_address):
     snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS)
     blockchain_type = get_blockchain_type(chain)
     number_of_transactions = get_number_of_transactions(chain, token_address)
-#    current_token_holder_count = get_current_token_holder_count(chain, token_address)
+    current_token_holder_count = get_current_token_holder_count(chain, token_address)
     print("project_period_days:", project_period_days)
     print("snapshots:", snapshots)
     print("blockchain_type:", blockchain_type)
     print("number_of_transactions:", number_of_transactions)
-#    print("current_token_holder_count:", current_token_holder_count)
-
-
-
-
+    print("current_token_holder_count:", current_token_holder_count)
 
 
 
@@ -179,7 +201,7 @@ def get_onchain_features_live(chain, token_address):
 
 
 def main():
-     get_onchain_features_live('BSC', '0xBf5140A22578168FD562DCcF235E5D43A02ce9B1')
+     get_onchain_features_live('ETH', '0x00f3C42833C3170159af4E92dbb451Fb3F708917')
 
 
 

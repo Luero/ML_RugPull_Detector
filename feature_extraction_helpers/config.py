@@ -23,6 +23,9 @@ BLOCKSCOUT_BASE_URLS = {
     "ARBI": "https://arbitrum.blockscout.com",
     "POLYGON": "https://polygon.blockscout.com",
 }
+# Sometimes server return code 500 (internal server error), so 3 retries per call is set
+BLOCKSCOUT_MAX_RETRIES = 3
+BLOCKSCOUT_RETRY_DELAY_SECONDS = 1.5
 
 
 # IDs of chains supported by Etherscan and relevant for the dataset
