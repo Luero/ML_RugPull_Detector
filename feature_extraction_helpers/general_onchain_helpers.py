@@ -5,7 +5,7 @@ import time
 import requests
 from datetime import datetime, timezone
 
-from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN_API_KEY, CHAIN_IDS, ETHERSCAN_BASE_URL, \
+from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN_API_KEY, ETHERSCAN_CHAIN_IDS, ETHERSCAN_BASE_URL, \
     NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS
 
 
@@ -15,7 +15,7 @@ def query_etherscan(chain, params):
     data_not_found_messages = {'No records found', 'No data found', 'No transactions found'}
     params = params.copy()
     params['apikey'] = ETHERSCAN_API_KEY
-    params['chainid'] = CHAIN_IDS[chain]
+    params['chainid'] = ETHERSCAN_CHAIN_IDS[chain]
     response = requests.get(ETHERSCAN_BASE_URL, params=params, timeout=30)
 
     if response.status_code != 200:

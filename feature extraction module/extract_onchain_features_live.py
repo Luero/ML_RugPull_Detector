@@ -16,11 +16,13 @@
 
 from datetime import datetime, timezone
 
-from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE
+import requests
+
+from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, MORALIS_BASE_URL, \
+    MORALIS_API_KEY
 from feature_extraction_helpers.general_onchain_helpers import get_latest_block_eth, query_etherscan, \
     get_deployment_block_and_timestamp, get_latest_block_with_timestamp
 from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots, get_transfer_logs
-from feature_extraction_helpers.config import ETH_LOG_RESULT_LIMIT
 from feature_extraction_helpers.general_onchain_helpers import query_etherscan
 
 
@@ -58,6 +60,7 @@ def get_project_period_days(chain, token_address, deployment_block, deployment_t
     if deployment_block is None:
         print(f"No deployment block found for {token_address} on {chain}")
         return None
+    print("Project period is calculating...")
     start_date = datetime.fromtimestamp(deployment_timestamp, tz=timezone.utc)
     last_activity_timestamp = get_last_activity_timestamp(chain, token_address)
     if is_token_live(last_activity_timestamp, latest_block_timestamp):
@@ -73,6 +76,7 @@ def get_project_period_days(chain, token_address, deployment_block, deployment_t
 
 # Extract 'Holders_12h', 'Holders_24h' features
 def get_holders_count_snapshots(chain, token_address, time_for_snapshots_hour):
+    print("Holders count snapshots are calculating...")
     latest_arbitrum_block = get_latest_block_eth('ARBI') if chain == 'ARBI' else None
     # Time for snapshots in hours that are used by the model
     snapshots = get_holders_snapshots(chain, token_address, time_for_snapshots_hour, latest_arbitrum_block)
@@ -81,30 +85,56 @@ def get_holders_count_snapshots(chain, token_address, time_for_snapshots_hour):
 
 # Extract 'Blockchain Type' (then encode with pre-fitted and saved OneHotEncoder and leave what the model consumes)
 def get_blockchain_type(chain):
+    print("Blockchain type is calculating...")
     return NETWORK_TO_BLOCKCHAIN_TYPE[chain]
 
 
 # Extract number of transactions ('the number of Transactions') between deployment_block and latest_block
-# Total number of on-chain token transfer transactions, as described in TM-RugPull methodology,
-# is calculated with unique transactionHash values
+# Total number of on-chain token transfer transactions, as described in TM-RugPull methodology,is calculated with unique transactionHash values
+# Uses
+# TODO: check indexed API (try Moralis), since current logic is too slow for live queries. Other options: GoldRush
 def get_number_of_transactions(chain, token_address, deployment_block, latest_block):
+    print("Number of transactions are calculating...")
     if deployment_block is None:
         print(f"No deployment block found for {token_address} on {chain}")
         return None
-    logs, had_failure = get_transfer_logs(chain, token_address, int(deployment_block), int(latest_block))
-    if had_failure:
-        print(f"Log failure for {token_address}")
+    moralis_chain = MORALIS_CHAIN_IDS.get(chain)
+    if moralis_chain is None:
+        print(f"Unsupported chain {chain} for Moralis transfers endpoint")
         return None
-    unique_tx_hashes = {log['transactionHash'] for log in logs}
+    unique_tx_hashes = set()
+    cursor = None
+    while True:
+        # Free plan allows only 100 results per page
+        params = {"chain": moralis_chain, "from_block": int(deployment_block), "to_block": int(latest_block), "limit": 100}
+        if cursor:
+            params["cursor"] = cursor
+        try:
+            response = requests.get(
+                f"{MORALIS_BASE_URL}/erc20/{token_address}/transfers",
+                params=params,
+                headers={"X-API-Key": MORALIS_API_KEY},
+                timeout=30,
+            )
+        except requests.RequestException as e:
+            print(f"Request error for {token_address}: {e}")
+            return None
+        if response.status_code != 200:
+            print(f"HTTP {response.status_code} for {token_address}: {response.text}")
+            return None
+        data = response.json()
+        for transfer in data.get("result", []):
+            unique_tx_hashes.add(transfer["transaction_hash"])
+        cursor = data.get("cursor")
+        if not cursor:
+            break
 
     return len(unique_tx_hashes)
 
 
-# Extract token concentration ratio
-# Token concentration ratio feature is described in TM-RugPull methodology as concentration ratio among top-1% holders
-# However, attempts to reconstruct numbers using this approach failed, and web search showed that values of this feature
-# are more likely number of holders, not a concentration ratio
-def get_token_concentration_ratio(chain, token_address):
+# Extract token holder count at the time of query or project end date (if is_token_live == False)
+# TODO: Try Moralis API for current holders count and find how often it is indexed
+def get_current_token_holder_count(chain, token_address):
     if chain == 'BSC':
         # TODO: implement for BSC
         raise NotImplementedError()
@@ -115,11 +145,11 @@ def get_onchain_features_live(chain, token_address):
     latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
     deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, token_address)
     project_period_days = get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp)
-  #  snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS)
+    snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS)
     blockchain_type = get_blockchain_type(chain)
     number_of_transactions = get_number_of_transactions(chain, token_address, deployment_block, latest_block)
     print("project_period_days:", project_period_days)
- #   print("snapshots:", snapshots)
+    print("snapshots:", snapshots)
     print("blockchain_type:", blockchain_type)
     print("number_of_transactions:", number_of_transactions)
 
@@ -131,6 +161,7 @@ def get_onchain_features_live(chain, token_address):
 
 def main():
     get_onchain_features_live('ARBI', '0x25118290e6A5f4139381D072181157035864099d')
+
 
 
 if __name__ == "__main__":

@@ -15,10 +15,18 @@ ETHERSCAN_BASE_URL = 'https://api.etherscan.io/v2/api'
 NODEREAL_API_KEY = os.getenv('NODEREAL_API_KEY')
 MEGANODE_BSC_URL = (f'https://bsc-mainnet.nodereal.io/v1/{NODEREAL_API_KEY}')
 
+MORALIS_BASE_URL = "https://deep-index.moralis.io/api/v2.2"
+MORALIS_API_KEY = os.getenv('MORALIS_API_KEY')
+
 
 # IDs of chains supported by Etherscan and relevant for the dataset
 # Reference: https://docs.etherscan.io/supported-chains
-CHAIN_IDS = {'ETH': 1, 'POLYGON': 137, 'ARBI': 42161}
+ETHERSCAN_CHAIN_IDS = {'ETH': 1, 'POLYGON': 137, 'ARBI': 42161}
+
+
+# IDs of chains supported by Moralis
+# Reference: https://docs.moralis.com/data-api/evm/token/transfers/token-transfers
+MORALIS_CHAIN_IDS = {"ETH": "0x1", "BSC": "0x38", "POLYGON": "0x89", "ARBI": "0xa4b1"}
 
 
 # https://www.4byte.directory/event-signatures/?bytes_signature=0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
