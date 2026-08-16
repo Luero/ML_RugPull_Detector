@@ -5,9 +5,10 @@ import time
 import requests
 from datetime import datetime, timezone
 
-from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN_API_KEY, ETHERSCAN_CHAIN_IDS, ETHERSCAN_BASE_URL, \
-    NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS
-
+from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN_API_KEY, ETHERSCAN_CHAIN_IDS, \
+    ETHERSCAN_BASE_URL, \
+    NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS, COINGECKO_BASE_URL, COINGECKO_TIME_INTERVAL, \
+    COINGECKO_API_KEY
 
 # Based on TM-RugPull methodology
 LIVE_THRESHOLD_HOURS = 72
@@ -67,7 +68,8 @@ def query_meganode(method, params):
 # Reference: https://docs.coingecko.com/docs/keyless-public-api
 def query_coingecko(endpoint, params=None):
     time.sleep(COINGECKO_TIME_INTERVAL)
-    response = requests.get(f"{COINGECKO_BASE_URL}{endpoint}", params=params or {}, timeout=30)
+    headers = {'x-cg-demo-api-key': COINGECKO_API_KEY}
+    response = requests.get(f"{COINGECKO_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
 
     if response.status_code == 404:
         print(f"CoinGecko has no tracked coin for {endpoint}")

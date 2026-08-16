@@ -27,6 +27,7 @@ BLOCKSCOUT_BASE_URLS = {
 BLOCKSCOUT_MAX_RETRIES = 3
 BLOCKSCOUT_RETRY_DELAY_SECONDS = 1.5
 # https://docs.coingecko.com/docs/keyless-public-api
+COINGECKO_API_KEY= os.getenv('COINGECKO_API_KEY')
 COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3'
 # https://docs.coingecko.com/docs/keyless-public-api
 GECKOTERMINAL_BASE_URL = 'https://api.geckoterminal.com/api/v2'
@@ -63,7 +64,8 @@ NODEREAL_BLOCK_RANGE_SIZE = 49000
 ETHERSCAN_TIME_INTERVAL = 0.35
 NODEREAL_TIME_INTERVAL = 0.20
 # Reference: https://docs.coingecko.com/docs/keyless-public-api
-COINGECKO_TIME_INTERVAL = 2.1
+COINGECKO_TIME_INTERVAL = 0.65
+GECKOTERMINAL_TIME_INTERVAL = 2.1
 
 
 # Mapping between blockchain and consensus type
