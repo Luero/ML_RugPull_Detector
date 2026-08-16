@@ -30,7 +30,7 @@ BLOCKSCOUT_RETRY_DELAY_SECONDS = 1.5
 
 # IDs of chains supported by Etherscan and relevant for the dataset
 # Reference: https://docs.etherscan.io/supported-chains
-ETHERSCAN_CHAIN_IDS = {'ETH': 1, 'POLYGON': 137, 'ARBI': 42161}
+ETHERSCAN_CHAIN_IDS = {'ETH': 1, 'POLYGON': 137, 'ARBI': 42161, 'BSC': 56}
 
 
 # IDs of chains supported by Moralis
