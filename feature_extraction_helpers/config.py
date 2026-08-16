@@ -26,6 +26,10 @@ BLOCKSCOUT_BASE_URLS = {
 # Sometimes server return code 500 (internal server error), so 3 retries per call is set
 BLOCKSCOUT_MAX_RETRIES = 3
 BLOCKSCOUT_RETRY_DELAY_SECONDS = 1.5
+# https://docs.coingecko.com/docs/keyless-public-api
+COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3'
+# https://docs.coingecko.com/docs/keyless-public-api
+GECKOTERMINAL_BASE_URL = 'https://api.geckoterminal.com/api/v2'
 
 
 # IDs of chains supported by Etherscan and relevant for the dataset
@@ -36,6 +40,13 @@ ETHERSCAN_CHAIN_IDS = {'ETH': 1, 'POLYGON': 137, 'ARBI': 42161, 'BSC': 56}
 # IDs of chains supported by Moralis
 # Reference: https://docs.moralis.com/data-api/evm/token/transfers/token-transfers
 MORALIS_CHAIN_IDS = {"ETH": "0x1", "BSC": "0x38", "POLYGON": "0x89", "ARBI": "0xa4b1"}
+
+
+# IDs of chains supported by CoinGecko and CoinGeckoTerminal
+# Reference: https://docs.coingecko.com/reference/asset-platforms-list
+COINGECKO_CHAIN_IDS = {'ETH': 'ethereum', 'BSC': 'binance-smart-chain', 'POLYGON': 'polygon-pos', 'ARBI': 'arbitrum-one'}
+# Reference: https://docs.coingecko.com/demo/reference/token-info-contract-address
+GECKOTERMINAL_NETWORK_IDS = {'ETH': 'eth', 'BSC': 'bsc', 'POLYGON': 'polygon_pos', 'ARBI': 'arbitrum'}
 
 
 # https://www.4byte.directory/event-signatures/?bytes_signature=0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
@@ -51,6 +62,8 @@ NODEREAL_BLOCK_RANGE_SIZE = 49000
 # API limitations for calls per time
 ETHERSCAN_TIME_INTERVAL = 0.35
 NODEREAL_TIME_INTERVAL = 0.20
+# Reference: https://docs.coingecko.com/docs/keyless-public-api
+COINGECKO_TIME_INTERVAL = 2.1
 
 
 # Mapping between blockchain and consensus type

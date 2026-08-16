@@ -21,38 +21,12 @@ import time
 from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, MORALIS_BASE_URL, \
     MORALIS_API_KEY, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS
 from feature_extraction_helpers.general_onchain_helpers import get_latest_block_eth, \
-    get_deployment_block_and_timestamp, get_latest_block_with_timestamp
+    get_deployment_block_and_timestamp, get_latest_block_with_timestamp, get_last_activity_timestamp, is_token_live
 from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
-from feature_extraction_helpers.general_onchain_helpers import query_etherscan
 
-
-# Based on TM-RugPull methodology
-LIVE_THRESHOLD_HOURS = 72
 
 # Based on particular model trained on subset of features
 TIME_FOR_SNAPSHOTS_HOURS = (12, 24)
-
-# Get a timestamp of the latest token transaction to determine whether the queried token is live
-# Reference: https://docs.etherscan.io/api-reference/endpoint/tokentx
-def get_last_activity_timestamp(chain, token_address):
-    if chain == 'BSC':
-        # TODO: implement with NodeReal
-        raise NotImplementedError()
-    data = query_etherscan(chain, {
-        'module': 'account', 'action': 'tokentx', 'contractaddress': token_address,
-        'page': 1, 'offset': 1, 'sort': 'desc',
-    })
-    if data is None or not data.get('result'):
-        return None
-    return int(data['result'][0]['timeStamp'])
-
-
-# Determine whether a token is live by checking the last activity timestamp
-def is_token_live(last_activity_timestamp, latest_block_timestamp):
-    if last_activity_timestamp is None:
-        return False
-    hours_since = (latest_block_timestamp - datetime.fromtimestamp(last_activity_timestamp, tz=timezone.utc)).total_seconds() / 3600
-    return hours_since <= LIVE_THRESHOLD_HOURS
 
 
 # Extract project period as required for prediction ('project period (days)')
@@ -193,10 +167,6 @@ def get_onchain_features_live(chain, token_address):
     print("number_of_transactions:", number_of_transactions)
     print("current_token_holder_count:", current_token_holder_count)
 
-
-
-
-# TODO: a function for each feature + feeding features into the model
 
 
 def main():

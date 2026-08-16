@@ -9,6 +9,10 @@ from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN
     NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS
 
 
+# Based on TM-RugPull methodology
+LIVE_THRESHOLD_HOURS = 72
+
+
 # General function to query Etherscan's endpoints
 def query_etherscan(chain, params):
     time.sleep(ETHERSCAN_TIME_INTERVAL)
@@ -57,6 +61,22 @@ def query_meganode(method, params):
         return None
 
     return data.get('result')
+
+
+# General function to query CoinGecko's public endpoints
+# Reference: https://docs.coingecko.com/docs/keyless-public-api
+def query_coingecko(endpoint, params=None):
+    time.sleep(COINGECKO_TIME_INTERVAL)
+    response = requests.get(f"{COINGECKO_BASE_URL}{endpoint}", params=params or {}, timeout=30)
+
+    if response.status_code == 404:
+        print(f"CoinGecko has no tracked coin for {endpoint}")
+        return None
+    if response.status_code != 200:
+        print(f"HTTP error {response.status_code} for {endpoint}")
+        return None
+
+    return response.json()
 
 
 # Obtain deployment block number using token contract address
@@ -157,3 +177,26 @@ def hours_to_blocks(chain, hours, deployment_timestamp):
     if block_time is None:
         return None
     return int((hours * 3600) / block_time)
+
+
+# Get a timestamp of the latest token transaction to determine whether the queried token is live
+# Reference: https://docs.etherscan.io/api-reference/endpoint/tokentx
+def get_last_activity_timestamp(chain, token_address):
+    if chain == 'BSC':
+        # TODO: implement with NodeReal
+        raise NotImplementedError()
+    data = query_etherscan(chain, {
+        'module': 'account', 'action': 'tokentx', 'contractaddress': token_address,
+        'page': 1, 'offset': 1, 'sort': 'desc',
+    })
+    if data is None or not data.get('result'):
+        return None
+    return int(data['result'][0]['timeStamp'])
+
+
+# Determine whether a token is live by checking the last activity timestamp
+def is_token_live(last_activity_timestamp, latest_block_timestamp):
+    if last_activity_timestamp is None:
+        return False
+    hours_since = (latest_block_timestamp - datetime.fromtimestamp(last_activity_timestamp, tz=timezone.utc)).total_seconds() / 3600
+    return hours_since <= LIVE_THRESHOLD_HOURS
