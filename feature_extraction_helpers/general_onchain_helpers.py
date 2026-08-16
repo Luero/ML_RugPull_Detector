@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN_API_KEY, ETHERSCAN_CHAIN_IDS, \
     ETHERSCAN_BASE_URL, \
     NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS, COINGECKO_BASE_URL, COINGECKO_TIME_INTERVAL, \
-    COINGECKO_API_KEY
+    COINGECKO_API_KEY, GECKOTERMINAL_TIME_INTERVAL, GECKOTERMINAL_BASE_URL
 
 # Based on TM-RugPull methodology
 LIVE_THRESHOLD_HOURS = 72
@@ -74,6 +74,19 @@ def query_coingecko(endpoint, params=None):
     if response.status_code == 404:
         print(f"CoinGecko has no tracked coin for {endpoint}")
         return None
+    if response.status_code != 200:
+        print(f"HTTP error {response.status_code} for {endpoint}")
+        return None
+
+    return response.json()
+
+
+# General function to query GeckoTerminal's public endpoints
+# Reference: https://docs.coingecko.com/docs/keyless-public-api
+def query_geckoterminal(endpoint, params=None):
+    time.sleep(GECKOTERMINAL_TIME_INTERVAL)
+    response = requests.get(f"{GECKOTERMINAL_BASE_URL}{endpoint}", params=params or {}, timeout=30)
+
     if response.status_code != 200:
         print(f"HTTP error {response.status_code} for {endpoint}")
         return None

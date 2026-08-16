@@ -11,11 +11,12 @@
 # (2) GeckoTerminal API: works for any token, if on-chain liquidity pool was created, gets data directly from swap activity, but
 #     requires several API calls and pagination: it needs to find relevant pool / pools, then returns OHLCV for a specific pool.
 #     Reference: https://docs.coingecko.com/docs/keyless-public-api
+import math
 import time
-from datetime import datetime, timezone
 
 from feature_extraction_helpers.config import COINGECKO_CHAIN_IDS
-from feature_extraction_helpers.general_onchain_helpers import query_coingecko
+from feature_extraction_helpers.general_onchain_helpers import query_coingecko, get_last_activity_timestamp, \
+    is_token_live, get_deployment_block_and_timestamp, get_latest_block_with_timestamp
 
 # Thresholds to pick OHLCV candle resolution based on window length
 # More granularity for short living tokens (to catch rug-pull), increasing for long-living projects due to
@@ -46,16 +47,62 @@ f"/coins/{blockchain}/contract/{token_address}/market_chart/range",
     return [(timestamp_ms / 1000, price) for timestamp_ms, price in data['prices']]
 
 
+# Extract the maximum price for a specified range
+def get_max_price_in_range(prices, from_timestamp, to_timestamp):
+    prices_in_range = [price for timestamp, price in prices if from_timestamp <= timestamp < to_timestamp]
+    if not prices_in_range:
+        return math.nan
+    return max(prices_in_range)
+
+
+# Determine the end of the quarter window: query time for active tokens and last activity timestamp for dead tokens
+def get_window_end_timestamp(chain, token_address, latest_block_timestamp):
+    last_activity_timestamp = get_last_activity_timestamp(chain, token_address)
+    if is_token_live(last_activity_timestamp, latest_block_timestamp):
+        return int(time.time())
+    if last_activity_timestamp is not None:
+        return last_activity_timestamp
+    # No activity ever recorded, use time of query
+    return int(time.time())
+
+
+# Extract 'MaxPrice (Quarter 1)', 'MaxPrice (Quarter 2)' for a live-queried token
+# Tries CoinGecko API first. If a queried token is not listed here (code 404), tries GeckoTerminal with pool-resolution
+# TODO: add Geckoterminal once tested
+def get_max_price_quarters_live(chain, token_address, deployment_timestamp, latest_block_timestamp):
+    print("MaxPrice (Quarter 1)/(Quarter 2) are calculating...")
+    window_end = get_window_end_timestamp(chain, token_address, latest_block_timestamp)
+
+    prices = get_prices_coingecko(chain, token_address, deployment_timestamp, window_end)
+    if prices is None:
+        print(f"CoinGecko has no data for {token_address} on {chain}")
+        return {'MaxPrice (Quarter 1)': math.nan, 'MaxPrice (Quarter 2)': math.nan, 'price_source': None}
+
+    window_start = deployment_timestamp
+    quarter_length_seconds = (window_end - window_start) / 4
+    if quarter_length_seconds <= 0:
+        print(f"Negative window for {token_address} on {chain}, calculation mistake")
+        return {'MaxPrice (Quarter 1)': math.nan, 'MaxPrice (Quarter 2)': math.nan, 'price_source': 'coingecko'}
+
+    q1_start = window_start
+    q1_end = window_start + quarter_length_seconds
+    q2_end = window_start + 2 * quarter_length_seconds
+
+    return {
+        'MaxPrice (Quarter 1)': get_max_price_in_range(prices, q1_start, q1_end),
+        'MaxPrice (Quarter 2)': get_max_price_in_range(prices, q1_end, q2_end),
+        'price_source': 'coingecko',
+    }
+
 
 
 def main():
-    now = int(time.time())
-    from_timestamp = now - 30 * 24 * 3600
-    to_timestamp = now
-    address = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
-    prices = get_prices_coingecko('ETH', address, from_timestamp, to_timestamp)
+    address = '0x3cdb41027d61c413e064e84d9c21812b6ef004f1'
+    chain = 'ETH'
+    deployment_timestamp = get_deployment_block_and_timestamp(chain, address)
+    latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
+    prices = get_max_price_quarters_live(chain, address, deployment_timestamp, latest_block_timestamp)
     print(prices)
-
 
 if __name__ == "__main__":
     main()
