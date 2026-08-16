@@ -11,7 +11,6 @@
 #['MaxPrice (Quarter 1)', 'MaxPrice (Quarter 2)', '',
 # 'Google results for project website (first day)', 'Google results for project x profile (first days)',
 # 'Google results for project x profile (duration/2)',
-# 'has_contract_swap_patterns', 'has_owner_guard', ]
 
 
 from datetime import datetime, timezone
@@ -134,7 +133,7 @@ def get_number_of_transactions(chain, token_address):
     return int(transfers_count)
 
 
-# Extract 'Token holder count' feature for all supported chains
+# Extract 'Number of holders' feature for all supported chains
 # For all chains except BSC uses Blockscout cached results
 def get_current_token_holder_count(chain, token_address):
     print("Current token holders number is calculating...")
@@ -151,7 +150,7 @@ def get_current_token_holder_count(chain, token_address):
     return int(holders_count)
 
 
-# Extract token holder count at the time of query for BSC tokens, uses Moralis free API with indexed number
+# Extract token holder count ('Number of holders') at the time of query for BSC tokens, uses Moralis free API with indexed number
 # Reference: https://docs.moralis.com/data-api/evm/token/holders/token-holder-stats
 # TODO: try to find frequency of indexing
 # TODO: maybe use for Arbitrum, too (strange results from Blockscout)

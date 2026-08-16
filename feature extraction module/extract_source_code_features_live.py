@@ -1,14 +1,10 @@
 # TODO: general comment
 
 import json
+import math
 
 from feature_extraction_helpers.general_onchain_helpers import query_etherscan
-
-
-# Etherscan wraps multi-file submissions in extra pair of curly braces
-# Reference: https://docs.etherscan.io/api-reference/endpoint/getsourcecode
-MULTI_FILE_WRAPPER_PREFIX = '{{'
-MULTI_FILE_WRAPPER_SUFFIX = '}}'
+from feature_extraction_helpers.source_code_helplers import is_bytecode, has_contract_swap_patterns, has_owner_guard
 
 
 # Extract source code for a token contract via Etherscan
@@ -25,7 +21,10 @@ def get_contract_source_code(chain, token_address):
         print(f"Contract {token_address} on {chain} is not verified")
         return None
 
-    return normalize_source_code(source_code)
+    normalized_source_code = normalize_source_code(source_code)
+    print(normalized_source_code)
+
+    return normalized_source_code
 
 
 # Flat source code from row response into a single string to apply regex patterns, if multiple files
@@ -44,10 +43,22 @@ def normalize_source_code(source_code):
     return '\n'.join(file_data.get('content', '') for file_data in sources.values())
 
 
+# Extract 'has_contract_swap_patterns', 'has_owner_guard' features for a live-queried token
+# Missing values or unverified contracts (bytecode only) are treated as missing values for prediction module
+def get_source_code_features_live(chain, token_address):
+    print("Code-based features are calculating...")
+    source_code = get_contract_source_code(chain, token_address)
+    if source_code is None:
+        return {'has_contract_swap_patterns': math.nan, 'has_owner_guard': math.nan}
+
+    return {
+        'has_contract_swap_patterns': int(has_contract_swap_patterns(source_code)),
+        'has_owner_guard': int(has_owner_guard(source_code)),
+    }
 
 
 def main():
-    print(get_contract_source_code('BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00'))
+    print(get_source_code_features_live('ETH', '0x582d872A1B094FC48F5DE31D3B73F2D9bE47def1'))
 
 
 if __name__ == "__main__":
