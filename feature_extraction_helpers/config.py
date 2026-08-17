@@ -44,9 +44,9 @@ MORALIS_CHAIN_IDS = {"ETH": "0x1", "BSC": "0x38", "POLYGON": "0x89", "ARBI": "0x
 
 
 # IDs of chains supported by CoinGecko and CoinGeckoTerminal
-# Reference: https://docs.coingecko.com/reference/asset-platforms-list
+# Reference: https://docs.coingecko.com/demo/reference/asset-platforms-list
 COINGECKO_CHAIN_IDS = {'ETH': 'ethereum', 'BSC': 'binance-smart-chain', 'POLYGON': 'polygon-pos', 'ARBI': 'arbitrum-one'}
-# Reference: https://docs.coingecko.com/demo/reference/token-info-contract-address
+# Reference: https://docs.coingecko.com/demo/reference/networks-list
 GECKOTERMINAL_NETWORK_IDS = {'ETH': 'eth', 'BSC': 'bsc', 'POLYGON': 'polygon_pos', 'ARBI': 'arbitrum'}
 
 

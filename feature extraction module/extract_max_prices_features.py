@@ -138,6 +138,8 @@ def transform_candles_to_prices(candles):
 # Attempts the GeckoTerminal path end-to-end; returns (window_start, price_points, success)
 def try_geckoterminal_source(chain, token_address, window_end):
     top_pool_address, earliest_pool_created_at, earliest_pool_address = get_top_pool_address(chain, token_address)
+    if top_pool_address is None:
+        return None, None
     window_start = parse_pool_created_at(earliest_pool_created_at)
     candles, had_failure = get_ohlcv_history(chain, top_pool_address, window_start, window_end)
     if had_failure or not candles:
@@ -215,12 +217,14 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, late
 
 
 def main():
-    address = '0x0c29891dc5060618c779e2a45fbe4808aa5ae6ad'
+    address = '0x459D3ae62B86cC6125e06260DddFd3AFED24A877'
     chain = 'ARBI'
     deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, address)
     latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
     prices = get_max_price_quarters_live(chain, address, deployment_timestamp, latest_block_timestamp)
     print(prices)
+
+
 
 
 if __name__ == "__main__":
