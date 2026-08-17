@@ -85,10 +85,12 @@ def query_coingecko(endpoint, params=None):
 # Reference: https://docs.coingecko.com/docs/keyless-public-api
 def query_geckoterminal(endpoint, params=None):
     time.sleep(GECKOTERMINAL_TIME_INTERVAL)
-    response = requests.get(f"{GECKOTERMINAL_BASE_URL}{endpoint}", params=params or {}, timeout=30)
+    headers = {'x-cg-demo-api-key': COINGECKO_API_KEY}
+    response = requests.get(f"{GECKOTERMINAL_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
 
     if response.status_code != 200:
         print(f"HTTP error {response.status_code} for {endpoint}")
+        print(response.json())
         return None
 
     return response.json()

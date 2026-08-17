@@ -30,7 +30,7 @@ BLOCKSCOUT_RETRY_DELAY_SECONDS = 1.5
 COINGECKO_API_KEY= os.getenv('COINGECKO_API_KEY')
 COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3'
 # https://docs.coingecko.com/docs/keyless-public-api
-GECKOTERMINAL_BASE_URL = 'https://api.geckoterminal.com/api/v2'
+GECKOTERMINAL_BASE_URL = 'https://api.coingecko.com/api/v3/onchain'
 
 
 # IDs of chains supported by Etherscan and relevant for the dataset
