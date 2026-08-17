@@ -52,7 +52,9 @@ f"/coins/{blockchain}/contract/{token_address}/market_chart/range",
 
 
 # CoinGecko Terminal contains on-chain information about pools created involving a particular address, thus,
-# to query prices it is necessary to find related pools
+# to query prices it is necessary to find related pools. Chooses a pull with most money (most representative for
+# prices extraction) + the earliest pool to get starting point for prices extraction (before the first pool, there are
+# no prices)
 # Cached every 60 seconds for Demo plan
 # Reference: https://docs.coingecko.com/demo/reference/top-pools-contract-address
 def get_top_pool_address(chain, token_address):
@@ -95,7 +97,54 @@ def choose_ohlcv_timeframe(window_seconds):
             return timeframe, aggregate
 
 
+# Get aggregated prices from a chosen pool
+# Cached every 60 seconds for Demo plan
+# Reference: https://docs.coingecko.com/demo/reference/pool-ohlcv-contract-address
+def get_ohlcv_history(chain, pool_address, from_timestamp, to_timestamp):
+    network = GECKOTERMINAL_NETWORK_IDS[chain]
+    timeframe, aggregate = choose_ohlcv_timeframe(to_timestamp - from_timestamp)
+    print(f"Fetching {timeframe} candles (aggregate={aggregate}) for pool {pool_address} via GeckoTerminal")
 
+    all_candles = []
+    cursor_timestamp = to_timestamp
+    while cursor_timestamp > from_timestamp:
+        data = query_geckoterminal(
+            f"/networks/{network}/pools/{pool_address}/ohlcv/{timeframe}",
+            params={'aggregate': aggregate, 'before_timestamp': cursor_timestamp, 'limit': 1000, 'currency': 'usd'},
+        )
+        if data is None:
+            return all_candles, True
+
+        candles = data.get('data', {}).get('attributes', {}).get('ohlcv_list', [])
+        if not candles:
+            break
+        all_candles.extend(candles)
+
+        oldest_timestamp = min(candle[0] for candle in candles)
+        if oldest_timestamp >= cursor_timestamp:
+            break
+        cursor_timestamp = oldest_timestamp
+
+    return all_candles, False
+
+
+# Flatten OHLCV candles [timestamp, open, high, low, close, volume] into (timestamp, price) pairs, uses 'high' price for each candle
+def transform_candles_to_prices(candles):
+    return [(candle[0], candle[2]) for candle in candles]
+
+
+# Attempts the GeckoTerminal path end-to-end; returns (window_start, price_points, success)
+def try_geckoterminal_source(chain, token_address, window_end):
+    pool_address, earliest_pool_created_at = get_top_pool_address(chain, token_address)
+    window_start = parse_pool_created_at(earliest_pool_created_at)
+    candles, had_failure = get_ohlcv_history(chain, pool_address, window_start, window_end)
+    if had_failure or not candles:
+        return None, None
+    # Checks whether full history up to window_start + 5 minutes (fixed source boundary for collection prices) is returned
+    if candles[-1][0] > window_start + 300:
+        print(f"WARNING: GeckoTerminal's earliest candle ({candles[-1][0]}) is later than the requested window start ({window_start})")
+
+    return window_start, transform_candles_to_prices(candles)
 
 
 # Extract the maximum price for a specified range
