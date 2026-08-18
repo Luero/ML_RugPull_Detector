@@ -23,14 +23,22 @@ from feature_extraction_helpers.general_onchain_helpers import query_coingecko, 
     is_token_live, get_deployment_block_and_timestamp, get_latest_block_with_timestamp, query_geckoterminal, \
     query_moralis
 
-# Thresholds to pick OHLCV candle resolution based on window length
+# Thresholds to pick OHLCV candle resolution based on window length, based on CoinGecko convention.
 # More granularity for short living tokens (to catch rug-pull), increasing for long-living projects due to
 # efficiency reasons and API limits
 # Reference: https://docs.coingecko.com/reference/pool-ohlcv-contract-address
-OHLCV_THRESHOLDS_SECONDS = (
+GECKO_OHLCV_THRESHOLDS_SECONDS = (
     (2 * 24 * 3600, 'minute', 15),   # for window <= 2 days: 15-minute candles
     (60 * 24 * 3600, 'hour', 1),     # for window <= 60 days: 1-hour candles
     (float('inf'), 'day', 1),        # for anything longer: daily candles
+)
+
+# Moralis timeframe enum values (1s, 10s, 30s, 1min, 5min, 10min, 30min, 1h, 4h, 12h, 1d, 1w, 1M)
+# Reference: https://docs.moralis.com/data-api/evm/price/ohlc
+MORALIS_TIMEFRAME_THRESHOLDS_SECONDS = (
+    (2 * 24 * 3600, '10min'),   # window <= 2 days: 10-minute candles
+    (60 * 24 * 3600, '1h'),    # window <= 60 days: 1-hour candles
+    (float('inf'), '1d'),      # anything longer: daily candles
 )
 
 
@@ -94,11 +102,18 @@ def parse_pool_created_at(pool_created_at):
     return int(datetime.strptime(pool_created_at, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc).timestamp())
 
 
-# Determine a time window depending on inspected period
-def choose_ohlcv_timeframe(window_seconds):
-    for max_seconds, timeframe, aggregate in OHLCV_THRESHOLDS_SECONDS:
+# Determine a time window depending on inspected period for CoinGecko
+def choose_ohlcv_timeframe_gecko(window_seconds):
+    for max_seconds, timeframe, aggregate in GECKO_OHLCV_THRESHOLDS_SECONDS:
         if window_seconds <= max_seconds:
             return timeframe, aggregate
+
+
+# Determine a time window depending on inspected period for Moralis
+def choose_moralis_timeframe(window_seconds):
+    for max_seconds, timeframe in MORALIS_TIMEFRAME_THRESHOLDS_SECONDS:
+        if window_seconds <= max_seconds:
+            return timeframe
 
 
 # Get aggregated prices from a chosen pool
@@ -106,7 +121,7 @@ def choose_ohlcv_timeframe(window_seconds):
 # Reference: https://docs.coingecko.com/demo/reference/pool-ohlcv-contract-address
 def get_ohlcv_history(chain, pool_address, from_timestamp, to_timestamp):
     network = GECKOTERMINAL_NETWORK_IDS[chain]
-    timeframe, aggregate = choose_ohlcv_timeframe(to_timestamp - from_timestamp)
+    timeframe, aggregate = choose_ohlcv_timeframe_gecko(to_timestamp - from_timestamp)
     print(f"Fetching {timeframe} candles (aggregate={aggregate}) for pool {pool_address} via GeckoTerminal")
 
     all_candles = []
@@ -137,7 +152,7 @@ def transform_candles_to_prices(candles):
     return [(candle[0], candle[2]) for candle in candles]
 
 
-# Attempts the GeckoTerminal path end-to-end; returns (window_start, price_points, success)
+# Attempts the GeckoTerminal path end-to-end
 def try_geckoterminal_source(chain, token_address, window_end):
     top_pool_address, earliest_pool_created_at, earliest_pool_address = get_top_pool_address(chain, token_address)
     if top_pool_address is None:
@@ -255,9 +270,54 @@ def parse_moralis_timestamp(timestamp_str):
     return int(datetime.fromisoformat(timestamp_str.replace('Z', '+00:00')).timestamp())
 
 
+# Get aggregated prices for a Moralis pair
+# Reference: https://docs.moralis.com/data-api/evm/token/prices/ohlc
+def get_prices_moralis_pair(chain, pair_address, from_timestamp, to_timestamp):
+    moralis_chain = MORALIS_CHAIN_IDS.get(chain)
+    timeframe = choose_moralis_timeframe(to_timestamp - from_timestamp)
+    print(f"Fetching {timeframe} candles for pair {pair_address} via Moralis")
+
+    all_prices = []
+    cursor = None
+    while True:
+        params = {'chain': moralis_chain, 'timeframe': timeframe, 'currency': 'usd',
+                   'fromDate': from_timestamp, 'toDate': to_timestamp, 'limit': 1000}
+        if cursor:
+            params['cursor'] = cursor
+        data = query_moralis(f"/pairs/{pair_address}/ohlcv", params=params)
+        if data is None:
+            return all_prices, True
+
+        candles = data.get('result', [])
+        for candle in candles:
+            all_prices.append((parse_moralis_timestamp(candle['timestamp']), candle['high']))
+
+        cursor = data.get('cursor')
+        if not cursor or not candles:
+            break
+
+    return all_prices, False
+
+
+# Attempts Moralis path end-to-end
+def try_moralis_source(chain, token_address, deployment_timestamp, window_end):
+    pair_address = get_top_pool_moralis(chain, token_address)
+    if pair_address is None:
+        return None, None
+    # Moralis API does not provide info about the earliest pool and timestamps for pools, thus, window_start is determined
+    # by the first swap event (meaning, that the token began trading activity). If no swaps, deployment timestamp is used
+    first_swap_timestamp = get_first_swap_timestamp_moralis(chain, token_address)
+    window_start = first_swap_timestamp if first_swap_timestamp is not None else deployment_timestamp
+
+    prices, had_failure = get_prices_moralis_pair(chain, pair_address, window_start, window_end)
+    if had_failure or not prices:
+        return None, None
+
+    return window_start, prices
+
+
 # Extract 'MaxPrice (Quarter 1)', 'MaxPrice (Quarter 2)' for a live-queried token
 # Tries CoinGecko API first. If a queried token is not listed here (code 404), tries GeckoTerminal with pool-resolution
-# TODO: add Geckoterminal once tested
 def get_max_price_quarters_live(chain, token_address, deployment_timestamp, latest_block_timestamp):
     print("MaxPrice (Quarter 1)/(Quarter 2) are calculating...")
     window_end = get_window_end_timestamp(chain, token_address, latest_block_timestamp)
@@ -279,14 +339,16 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, late
 
 
 def main():
-    address = '0x100acD9FcD8E0FF80A6595B66fdABe93184Aa100'
-    chain = 'ETH'
-    # deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, address)
-    # latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
+    address = '0xB91025710Adbc140a9fEe4b3E465545a2bF53E20'
+    chain = 'POLYGON'
+    deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, address)
+    latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
     # prices = get_max_price_quarters_live(chain, address, deployment_timestamp, latest_block_timestamp)
     # print(prices)
-    pairs = get_top_pool_moralis(chain, address)
-    print(pairs)
+    window_end = get_window_end_timestamp(chain, address, latest_block_timestamp)
+    window_start, prices = try_moralis_source(chain, address, deployment_timestamp, window_end)
+    print(window_start, prices)
+
 
 
 
