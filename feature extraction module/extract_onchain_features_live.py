@@ -21,7 +21,8 @@ import time
 from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, MORALIS_BASE_URL, \
     MORALIS_API_KEY, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS
 from feature_extraction_helpers.general_onchain_helpers import get_latest_block_eth, \
-    get_deployment_block_and_timestamp, get_latest_block_with_timestamp, get_last_activity_timestamp, is_token_live
+    get_deployment_block_and_timestamp, get_latest_block_with_timestamp, get_last_activity_timestamp, is_token_live, \
+    query_moralis
 from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
 
 
@@ -131,17 +132,9 @@ def get_current_token_holder_count(chain, token_address):
 def get_current_token_holder_count_bsc(token_address):
     moralis_chain = MORALIS_CHAIN_IDS.get('BSC')
     try:
-        response = requests.get(
-            f"{MORALIS_BASE_URL}/erc20/{token_address}/holders",
-            params={"chain": moralis_chain},
-            headers={"X-API-Key": MORALIS_API_KEY},
-            timeout=30,
-        )
+        response = query_moralis(f"/erc20/{token_address}/holders", {"chain": moralis_chain})
     except requests.RequestException as e:
         print(f"Request error for {token_address}: {e}")
-        return None
-    if response.status_code != 200:
-        print(f"HTTP {response.status_code} for {token_address}: {response.text}")
         return None
     data = response.json()
     total_holders = data.get("totalHolders")

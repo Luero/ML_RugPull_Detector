@@ -66,6 +66,8 @@ NODEREAL_TIME_INTERVAL = 0.20
 # Reference: https://docs.coingecko.com/docs/keyless-public-api
 COINGECKO_TIME_INTERVAL = 0.65
 GECKOTERMINAL_TIME_INTERVAL = 2.1
+# Depends on CU (computing units)
+MORALIS_TIME_INTERVAL = 0.15
 
 
 # Mapping between blockchain and consensus type

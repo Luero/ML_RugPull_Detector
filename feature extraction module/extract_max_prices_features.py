@@ -12,14 +12,16 @@
 #     requires several API calls and pagination: it needs to find relevant pool / pools, then returns OHLCV for a specific pool.
 #     Reference: https://docs.coingecko.com/docs/keyless-public-api
 # TODO: amend considering depth historical limits, try Moralis?
+# TODO: try this route: young tokens → try GeckoTerminal (more DEXes / coins), old tokens → try Moralis first (no documented historical depth cap)
 
 import math
 import time
 from datetime import datetime, timezone
 
-from feature_extraction_helpers.config import COINGECKO_CHAIN_IDS, GECKOTERMINAL_NETWORK_IDS
+from feature_extraction_helpers.config import COINGECKO_CHAIN_IDS, GECKOTERMINAL_NETWORK_IDS, MORALIS_CHAIN_IDS
 from feature_extraction_helpers.general_onchain_helpers import query_coingecko, get_last_activity_timestamp, \
-    is_token_live, get_deployment_block_and_timestamp, get_latest_block_with_timestamp, query_geckoterminal
+    is_token_live, get_deployment_block_and_timestamp, get_latest_block_with_timestamp, query_geckoterminal, \
+    query_moralis
 
 # Thresholds to pick OHLCV candle resolution based on window length
 # More granularity for short living tokens (to catch rug-pull), increasing for long-living projects due to
@@ -217,12 +219,14 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, late
 
 
 def main():
-    address = '0x459D3ae62B86cC6125e06260DddFd3AFED24A877'
-    chain = 'ARBI'
-    deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, address)
-    latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
-    prices = get_max_price_quarters_live(chain, address, deployment_timestamp, latest_block_timestamp)
-    print(prices)
+    address = '0x100acD9FcD8E0FF80A6595B66fdABe93184Aa100'
+    chain = 'ETH'
+    # deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, address)
+    # latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
+    # prices = get_max_price_quarters_live(chain, address, deployment_timestamp, latest_block_timestamp)
+    # print(prices)
+    data = query_moralis(f"/erc20/{address}/pairs", params={'chain': MORALIS_CHAIN_IDS['ETH']})
+    print(data)
 
 
 
