@@ -195,6 +195,66 @@ def compute_quarters(prices, window_start, window_end, price_source):
     }
 
 
+# Extract pools information for a specified token address via Moralis, return top pool for further query for prices
+# https://docs.moralis.com/data-api/evm/token/swaps/token-pairs
+def get_top_pool_moralis(chain, token_address):
+    moralis_chain = MORALIS_CHAIN_IDS.get(chain)
+    if moralis_chain is None:
+        return None
+
+    data = query_moralis(f"/erc20/{token_address}/pairs", params={'chain': moralis_chain})
+    if data is None or not data.get('pairs'):
+        print(f"No trading pairs found for {token_address} on {chain}")
+        return None
+
+    candidate_pairs = []
+    for pair in data['pairs']:
+        base_token = pair.get('base_token', '')
+        quote_token = pair.get('quote_token', '')
+        if token_address.lower() not in (base_token.lower(), quote_token.lower()):
+            continue
+        pair_address = pair.get('pair_address')
+        if pair_address is None:
+            continue
+        liquidity_usd = float(pair.get('liquidity_usd') or 0)
+        candidate_pairs.append((liquidity_usd, pair_address))
+
+    if not candidate_pairs:
+        return None
+
+    candidate_pairs.sort(key=lambda item: item[0], reverse=True)
+    top_pair = candidate_pairs[0]
+    top_liquidity, top_pair_address  = top_pair[0], top_pair[1]
+    print(f"Selected pair {top_pair_address} with liquidity ${top_liquidity:,.0f}")
+
+    return top_pair_address
+
+
+# Get the earliest swap for a token (order=ASC, limit=1) to get timestamp of trade start
+# Reference: https://docs.moralis.com/data-api/evm/token/swaps/token-swaps
+def get_first_swap_timestamp_moralis(chain, token_address):
+    moralis_chain = MORALIS_CHAIN_IDS.get(chain)
+    if moralis_chain is None:
+        return None
+
+    data = query_moralis(f"/erc20/{token_address}/swaps", params={'chain': moralis_chain, 'order': 'ASC', 'limit': 1})
+    if data is None or not data.get('result'):
+        print(f"No swaps found for {token_address} on {chain}")
+        return None
+
+    first_swap = data['result'][0]
+    block_timestamp = first_swap.get('blockTimestamp')
+    if block_timestamp is None:
+        return None
+
+    return parse_moralis_timestamp(block_timestamp)
+
+
+# Convert Moralis's ISO 8601 timestamp into a unix timestamp
+def parse_moralis_timestamp(timestamp_str):
+    return int(datetime.fromisoformat(timestamp_str.replace('Z', '+00:00')).timestamp())
+
+
 # Extract 'MaxPrice (Quarter 1)', 'MaxPrice (Quarter 2)' for a live-queried token
 # Tries CoinGecko API first. If a queried token is not listed here (code 404), tries GeckoTerminal with pool-resolution
 # TODO: add Geckoterminal once tested
@@ -225,8 +285,8 @@ def main():
     # latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
     # prices = get_max_price_quarters_live(chain, address, deployment_timestamp, latest_block_timestamp)
     # print(prices)
-    data = query_moralis(f"/erc20/{address}/pairs", params={'chain': MORALIS_CHAIN_IDS['ETH']})
-    print(data)
+    pairs = get_top_pool_moralis(chain, address)
+    print(pairs)
 
 
 
