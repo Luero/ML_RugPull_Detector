@@ -18,7 +18,8 @@ import math
 import time
 from datetime import datetime, timezone
 
-from feature_extraction_helpers.config import COINGECKO_CHAIN_IDS, GECKOTERMINAL_NETWORK_IDS, MORALIS_CHAIN_IDS
+from feature_extraction_helpers.config import COINGECKO_CHAIN_IDS, GECKOTERMINAL_NETWORK_IDS, MORALIS_CHAIN_IDS, \
+    GECKOTERMINAL_MAX_DEPTH_SECONDS
 from feature_extraction_helpers.general_onchain_helpers import query_coingecko, get_last_activity_timestamp, \
     is_token_live, get_deployment_block_and_timestamp, get_latest_block_with_timestamp, query_geckoterminal, \
     query_moralis
@@ -287,6 +288,7 @@ def get_prices_moralis_pair(chain, pair_address, from_timestamp, to_timestamp):
         data = query_moralis(f"/pairs/{pair_address}/ohlcv", params=params)
         if data is None:
             return all_prices, True
+        print(f"Moralis returned {len(data.get('result', []))} candles, cursor={data.get('cursor')}")
 
         candles = data.get('result', [])
         for candle in candles:
@@ -310,14 +312,25 @@ def try_moralis_source(chain, token_address, deployment_timestamp, window_end):
     window_start = first_swap_timestamp if first_swap_timestamp is not None else deployment_timestamp
 
     prices, had_failure = get_prices_moralis_pair(chain, pair_address, window_start, window_end)
+    print(f"Moralis window: {window_start} to {window_end}")
     if had_failure or not prices:
         return None, None
 
     return window_start, prices
 
 
+# Decide which on-chain source to try first, based on how old is the queried token (to avoid API historical depth limitations
+# Uses deployment timestamp for calculating, since first pool date is always after the deployment
+def choose_onchain_source_order(deployment_timestamp):
+    age_seconds = int(time.time()) - deployment_timestamp
+    if age_seconds < GECKOTERMINAL_MAX_DEPTH_SECONDS:
+        return ['geckoterminal', 'moralis']
+    return ['moralis', 'geckoterminal']
+
+
 # Extract 'MaxPrice (Quarter 1)', 'MaxPrice (Quarter 2)' for a live-queried token
-# Tries CoinGecko API first. If a queried token is not listed here (code 404), tries GeckoTerminal with pool-resolution
+# Tries CoinGecko API first. If a queried token is not listed here (result is None)), tries either GeckoTerminal, or Moralis
+# depending on how old is a queried token
 def get_max_price_quarters_live(chain, token_address, deployment_timestamp, latest_block_timestamp):
     print("MaxPrice (Quarter 1)/(Quarter 2) are calculating...")
     window_end = get_window_end_timestamp(chain, token_address, latest_block_timestamp)
@@ -327,27 +340,33 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, late
         result = compute_quarters(prices, deployment_timestamp, window_end, 'coingecko')
         if not (math.isnan(result['MaxPrice (Quarter 1)']) and math.isnan(result['MaxPrice (Quarter 2)'])):
             return result
-        print(f"CoinGecko data for {token_address} on {chain} doesn't cover Q1/Q2, trying GeckoTerminal")
+        print(f"CoinGecko data for {token_address} on {chain} doesn't cover Q1/Q2, trying other sources")
     else:
-        print(f"CoinGecko has no data for {token_address} on {chain}, trying GeckoTerminal")
+        print(f"CoinGecko has no data for {token_address} on {chain}, trying other sources")
 
-    window_start, prices = try_geckoterminal_source(chain, token_address, window_end)
+    window_start, prices, price_source = None, None, None
+    for source in choose_onchain_source_order(deployment_timestamp):
+        if source == 'geckoterminal':
+            window_start, prices = try_geckoterminal_source(chain, token_address, window_end)
+        else:
+            window_start, prices = try_moralis_source(chain, token_address, deployment_timestamp, window_end)
+        if prices is not None:
+            price_source = source
+            break
+
     if prices is None:
         return {'MaxPrice (Quarter 1)': math.nan, 'MaxPrice (Quarter 2)': math.nan, 'price_source': None}
 
-    return compute_quarters(prices, window_start, window_end, 'geckoterminal')
+    return compute_quarters(prices, window_start, window_end, price_source)
 
 
 def main():
-    address = '0xB91025710Adbc140a9fEe4b3E465545a2bF53E20'
+    address = '0xb0897686c545045aFc77CF20eC7A532E3120E0F1'
     chain = 'POLYGON'
     deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, address)
     latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
-    # prices = get_max_price_quarters_live(chain, address, deployment_timestamp, latest_block_timestamp)
-    # print(prices)
-    window_end = get_window_end_timestamp(chain, address, latest_block_timestamp)
-    window_start, prices = try_moralis_source(chain, address, deployment_timestamp, window_end)
-    print(window_start, prices)
+    result = get_max_price_quarters_live(chain, address, deployment_timestamp, latest_block_timestamp)
+    print(result['MaxPrice (Quarter 1)'], result['MaxPrice (Quarter 2)'], result['price_source'])
 
 
 

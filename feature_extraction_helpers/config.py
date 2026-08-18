@@ -49,6 +49,8 @@ COINGECKO_CHAIN_IDS = {'ETH': 'ethereum', 'BSC': 'binance-smart-chain', 'POLYGON
 # Reference: https://docs.coingecko.com/demo/reference/networks-list
 GECKOTERMINAL_NETWORK_IDS = {'ETH': 'eth', 'BSC': 'bsc', 'POLYGON': 'polygon_pos', 'ARBI': 'arbitrum'}
 
+# Historical data available only for 180 days in the past for demo API key
+GECKOTERMINAL_MAX_DEPTH_SECONDS = 180 * 24 * 3600
 
 # https://www.4byte.directory/event-signatures/?bytes_signature=0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
 TRANSFER_EVENT_HASH = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
