@@ -32,7 +32,7 @@ from feature_extraction_helpers.general_onchain_helpers import query_coingecko, 
 # efficiency reasons and API limits
 # Reference: https://docs.coingecko.com/reference/pool-ohlcv-contract-address
 GECKO_OHLCV_THRESHOLDS_SECONDS = (
-    (2 * 24 * 3600, 'minute', 15),   # for window <= 2 days: 15-minute candles
+    (2 * 24 * 3600, 'second', 30),   # for window <= 2 days: 30-seconds candles
     (60 * 24 * 3600, 'hour', 1),     # for window <= 60 days: 1-hour candles
     (float('inf'), 'day', 1),        # for anything longer: daily candles
 )
@@ -40,7 +40,7 @@ GECKO_OHLCV_THRESHOLDS_SECONDS = (
 # Moralis timeframe enum values (1s, 10s, 30s, 1min, 5min, 10min, 30min, 1h, 4h, 12h, 1d, 1w, 1M)
 # Reference: https://docs.moralis.com/data-api/evm/price/ohlc
 MORALIS_TIMEFRAME_THRESHOLDS_SECONDS = (
-    (2 * 24 * 3600, '10min'),   # window <= 2 days: 10-minute candles
+    (2 * 24 * 3600, '30s'),    # window <= 2 days: 30-seconds candles
     (60 * 24 * 3600, '1h'),    # window <= 60 days: 1-hour candles
     (float('inf'), '1d'),      # anything longer: daily candles
 )
@@ -154,9 +154,10 @@ def get_ohlcv_history(chain, pool_address, from_timestamp, to_timestamp, token_s
     return all_candles, False
 
 
-# Flatten OHLCV candles [timestamp, open, high, low, close, volume] into (timestamp, price) pairs, uses 'high' price for each candle
+# Flatten OHLCV candles [timestamp, open, high, low, close, volume] into (timestamp, price) pairs, uses 'close' price for each candle
+# to minimise possible noise from 'high' prices that may depend on the volume of trade per candle
 def transform_candles_to_prices(candles):
-    return [(candle[0], candle[2]) for candle in candles]
+    return [(candle[0], candle[4]) for candle in candles]
 
 
 # Extract the maximum price for a specified range
@@ -221,7 +222,7 @@ def get_prices_moralis_pair(chain, pair_address, from_timestamp, to_timestamp):
 
         candles = data.get('result', [])
         for candle in candles:
-            all_prices.append((parse_moralis_timestamp(candle['timestamp']), candle['high']))
+            all_prices.append((parse_moralis_timestamp(candle['timestamp']), candle['close']))
 
         cursor = data.get('cursor')
         if not cursor or not candles:
