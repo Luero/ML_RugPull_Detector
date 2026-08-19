@@ -9,7 +9,7 @@ from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN
     ETHERSCAN_BASE_URL, \
     NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS, COINGECKO_BASE_URL, COINGECKO_TIME_INTERVAL, \
     COINGECKO_API_KEY, GECKOTERMINAL_TIME_INTERVAL, GECKOTERMINAL_BASE_URL, MORALIS_TIME_INTERVAL, MORALIS_API_KEY, \
-    MORALIS_BASE_URL
+    MORALIS_BASE_URL, NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE
 
 # Based on TM-RugPull methodology
 LIVE_THRESHOLD_HOURS = 72
@@ -161,12 +161,44 @@ def get_latest_block_eth(chain):
     return int(data['result'], 16)
 
 
+# Get a block's timestamp via Etherscan
+# https://docs.etherscan.io/api-reference/endpoint/ethgetblockbynumber
+def get_block_timestamp(chain, block_number):
+    data = query_etherscan(chain, {'module': 'proxy', 'action': 'eth_getBlockByNumber', 'tag': hex(block_number), 'boolean': 'false'})
+    if data is None:
+        return None
+    return int(data['result']['timestamp'], 16)
+
+
+# Get latest block number for BSC via NodeReal
+# https://docs.nodereal.io/reference/eth-blocknumber-bnb-chain
+def get_latest_block_meganode():
+    result = query_meganode('eth_blockNumber', [])
+    if result is None:
+        return None
+    return int(result, 16)
+
+
+# Get a block's timestamp via NodeReal
+# https://docs.nodereal.io/reference/eth-getblockbynumber-bnb-chain
+def get_block_timestamp_meganode(block_number):
+    result = query_meganode('eth_getBlockByNumber', [hex(block_number), False])
+    if result is None:
+        return None
+    return int(result['timestamp'], 16)
+
+
 # Get latest block number and timestamp for all supported networks
 def get_latest_block_with_timestamp(chain):
     if chain == 'BSC':
-        # TODO: NodeReal implementation
-        raise NotImplementedError()
+        latest_block = get_latest_block_meganode()
+        if latest_block is None:
+            return None, None
+        latest_block_timestamp = datetime.fromtimestamp(get_block_timestamp_meganode(latest_block), tz=timezone.utc)
+        return latest_block, latest_block_timestamp
     latest_block = get_latest_block_eth(chain)
+    if latest_block is None:
+        return None, None
     latest_block_timestamp = datetime.fromtimestamp(get_block_timestamp(chain, latest_block), tz=timezone.utc)
     return latest_block, latest_block_timestamp
 
@@ -189,15 +221,6 @@ def find_block_by_timestamp(chain, to_timestamp, low_block, high_block):
     return closest_block
 
 
-# Get a block's timestamp via Etherscan
-# https://docs.etherscan.io/api-reference/endpoint/ethgetblockbynumber
-def get_block_timestamp(chain, block_number):
-    data = query_etherscan(chain, {'module': 'proxy', 'action': 'eth_getBlockByNumber', 'tag': hex(block_number), 'boolean': 'false'})
-    if data is None:
-        return None
-    return int(data['result']['timestamp'], 16)
-
-
 # Extract block time for the token's deployment timestamp
 def get_block_time_seconds(chain, deployment_timestamp):
     deployment_datetime = datetime.fromtimestamp(int(deployment_timestamp), tz=timezone.utc)
@@ -217,10 +240,9 @@ def hours_to_blocks(chain, hours, deployment_timestamp):
 
 # Get a timestamp of the latest token transaction to determine whether the queried token is live
 # Reference: https://docs.etherscan.io/api-reference/endpoint/tokentx
-def get_last_activity_timestamp(chain, token_address):
+def get_last_activity_timestamp(chain, token_address, latest_block, deployment_block):
     if chain == 'BSC':
-        # TODO: implement with NodeReal
-        raise NotImplementedError()
+        return get_last_activity_timestamp_bsc(token_address, latest_block, deployment_block)
     data = query_etherscan(chain, {
         'module': 'account', 'action': 'tokentx', 'contractaddress': token_address,
         'page': 1, 'offset': 1, 'sort': 'desc',
@@ -228,6 +250,33 @@ def get_last_activity_timestamp(chain, token_address):
     if data is None or not data.get('result'):
         return None
     return int(data['result'][0]['timeStamp'])
+
+
+# Get a timestamp of the lates token transfer event for BSC tokens
+def get_last_activity_timestamp_bsc(token_address, latest_block, deployment_block):
+    if latest_block is None or deployment_block is None:
+        return None
+    to_block = latest_block
+    while to_block >= deployment_block:
+        from_block = max(deployment_block, to_block - NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE)
+        result = query_meganode('nr_getAssetTransfers', [{
+            'category': ['20'],
+            'contractAddresses': [token_address],
+            'fromBlock': hex(from_block),
+            'toBlock': hex(to_block),
+            'order': 'desc',
+            'maxCount': '0x1',
+        }])
+        if result is None:
+            return None
+        transfers = result.get('transfers', [])
+        if transfers:
+            return transfers[0]['blockTimeStamp']
+        if from_block == deployment_block:
+            break
+        to_block = from_block - 1
+
+    return None
 
 
 # Determine whether a token is live by checking the last activity timestamp

@@ -60,6 +60,8 @@ TRANSFER_EVENT_HASH = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4
 ETH_LOG_RESULT_LIMIT = 1000
 # NodeReal limitations for block range size and number of records returned: https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
 NODEREAL_BLOCK_RANGE_SIZE = 49000
+# Max block range per call: https://docs.nodereal.io/reference/nr_getassettransfers
+NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE = 100000
 
 
 # API limitations for calls per time

@@ -19,10 +19,11 @@ import requests
 import time
 
 from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, MORALIS_BASE_URL, \
-    MORALIS_API_KEY, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS
+    MORALIS_API_KEY, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS, \
+    NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE
 from feature_extraction_helpers.general_onchain_helpers import get_latest_block_eth, \
     get_deployment_block_and_timestamp, get_latest_block_with_timestamp, get_last_activity_timestamp, is_token_live, \
-    query_moralis
+    query_moralis, query_meganode
 from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
 
 
@@ -31,13 +32,13 @@ TIME_FOR_SNAPSHOTS_HOURS = (12, 24)
 
 
 # Extract project period as required for prediction ('project period (days)')
-def get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp):
+def get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp, latest_block):
     if deployment_block is None:
         print(f"No deployment block found for {token_address} on {chain}")
         return None
     print("Project period is calculating...")
     start_date = datetime.fromtimestamp(deployment_timestamp, tz=timezone.utc)
-    last_activity_timestamp = get_last_activity_timestamp(chain, token_address)
+    last_activity_timestamp = get_last_activity_timestamp(chain, token_address, latest_block, deployment_block)
     if is_token_live(last_activity_timestamp, latest_block_timestamp):
         end_date = latest_block_timestamp
     elif last_activity_timestamp is not None:
@@ -92,11 +93,10 @@ def get_token_counters(chain, token_address):
 # Extract 'the number of Transactions' feature, which appear to be transfer count for the token lifetime, based on TM-RugPull dataset
 # For each supported chain except BSC uses Blockscout free API
 # Reference: https://docs.blockscout.com/api-reference/smart-contracts/get-count-statistics-new-&-newly-verified-for-deployed-smart-contracts
-def get_number_of_transactions(chain, token_address):
+def get_number_of_transactions(chain, token_address, deployment_block, latest_block):
     print("Number of transactions are calculating...")
     if chain == 'BSC':
-        # TODO: find a source for BSC
-        raise NotImplementedError()
+        return get_number_of_transactions_bsc(token_address, deployment_block, latest_block)
     counters = get_token_counters(chain, token_address)
     if counters is None:
         return None
@@ -106,6 +106,31 @@ def get_number_of_transactions(chain, token_address):
         return None
 
     return int(transfers_count)
+
+
+# Extract the number of transactions for BSD from NodeReal
+# Reference: https://docs.nodereal.io/reference/nr_getassettransferscount
+# TODO: find an indexed API, too slow here
+def get_number_of_transactions_bsc(token_address, deployment_block, latest_block):
+    if deployment_block is None or latest_block is None:
+        return None
+    total_transfers = 0
+    from_block = deployment_block
+    while from_block <= latest_block:
+        to_block = min(latest_block, from_block + NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE)
+        result = query_meganode('nr_getAssetTransfersCount', [{
+            'category': ['20'],
+            'contractAddresses': [token_address],
+            'fromBlock': hex(from_block),
+            'toBlock': hex(to_block),
+        }])
+        if result is None:
+            print(f"Failed to get transfer count for {token_address} in block range {from_block}-{to_block}")
+            return None
+        total_transfers += int(result, 16)
+        from_block = to_block + 1
+
+    return total_transfers
 
 
 # Extract 'Number of holders' feature for all supported chains
@@ -131,12 +156,10 @@ def get_current_token_holder_count(chain, token_address):
 # TODO: maybe use for Arbitrum, too (strange results from Blockscout)
 def get_current_token_holder_count_bsc(token_address):
     moralis_chain = MORALIS_CHAIN_IDS.get('BSC')
-    try:
-        response = query_moralis(f"/erc20/{token_address}/holders", {"chain": moralis_chain})
-    except requests.RequestException as e:
-        print(f"Request error for {token_address}: {e}")
+    data = query_moralis(f"/erc20/{token_address}/holders", {"chain": moralis_chain})
+    if data is None:
+        print(f"No holder data for {token_address}")
         return None
-    data = response.json()
     total_holders = data.get("totalHolders")
     if total_holders is None:
         print(f"No totalHolders field for {token_address}")
@@ -149,10 +172,10 @@ def get_onchain_features_live(chain, token_address):
     # Used as 'now' point at time for  extracts values at the time of query and reuses them for all features to get them consistent in time
     latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
     deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, token_address)
-    project_period_days = get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp)
+    project_period_days = get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp, latest_block)
     snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS)
     blockchain_type = get_blockchain_type(chain)
-    number_of_transactions = get_number_of_transactions(chain, token_address)
+    number_of_transactions = get_number_of_transactions(chain, token_address, deployment_block, latest_block)
     current_token_holder_count = get_current_token_holder_count(chain, token_address)
     print("project_period_days:", project_period_days)
     print("snapshots:", snapshots)
@@ -163,7 +186,7 @@ def get_onchain_features_live(chain, token_address):
 
 
 def main():
-     get_onchain_features_live('ETH', '0x00f3C42833C3170159af4E92dbb451Fb3F708917')
+     get_onchain_features_live('BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00')
 
 
 
