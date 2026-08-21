@@ -23,6 +23,7 @@ BLOCKSCOUT_BASE_URLS = {
     "ARBI": "https://arbitrum.blockscout.com",
     "POLYGON": "https://polygon.blockscout.com",
 }
+
 # Sometimes server return code 500 (internal server error), so 3 retries per call is set
 BLOCKSCOUT_MAX_RETRIES = 3
 BLOCKSCOUT_RETRY_DELAY_SECONDS = 1.5
@@ -60,8 +61,8 @@ TRANSFER_EVENT_HASH = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4
 ETH_LOG_RESULT_LIMIT = 1000
 # NodeReal limitations for block range size and number of records returned: https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
 NODEREAL_BLOCK_RANGE_SIZE = 49000
-# Max block range per call: https://docs.nodereal.io/reference/nr_getassettransfers
-NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE = 100000
+# toBlock - fromBlock must be less than 2000000 (searched empirically with nr_getAssetTransfersCount call)
+NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE = 1999999
 
 
 # API limitations for calls per time
@@ -78,7 +79,6 @@ MORALIS_TIME_INTERVAL = 0.15
 NETWORK_TO_BLOCKCHAIN_TYPE = {'ETH': 'POS', 'BSC': 'POSA', 'ARBI': 'Fraud Proofs', 'POLYGON': 'POS'}
 
 
-# TODO: extend to reuse for current tokens
 # For ETH: before September 2022 - 14.52 sec, after - 12.07 sec (mean calculated based on official Etherscan data: https://etherscan.io/chart/blocktime)
 # For BSC: before April 2025 - 3.01 sec (mean calculated based on official Bscscan data: https://bscscan.com/chart/blocktime)
 # For Polygon: before May 2026 - 2.17 sec (mean calculated based on official Polygonscan data: https://polygonscan.com/chart/blocktime)
@@ -90,9 +90,15 @@ BLOCK_TIME_PERIODS = {
         (datetime(2022, 9, 15, tzinfo=timezone.utc), datetime(2100, 1, 1, tzinfo=timezone.utc), 12.07),
     ),
     'BSC': (
-        (datetime(2000, 4, 20, tzinfo=timezone.utc), datetime(2025, 4, 1, tzinfo=timezone.utc), 3.01),
+        (datetime(2000, 4, 20, tzinfo=timezone.utc), datetime(2025, 4, 29, tzinfo=timezone.utc), 3.01),
+        (datetime(2025, 4, 29, tzinfo=timezone.utc), datetime(2025, 6, 30, tzinfo=timezone.utc), 1.50),
+        (datetime(2025, 6, 30, tzinfo=timezone.utc), datetime(2026, 1, 14, tzinfo=timezone.utc), 0.75),
+        (datetime(2026, 1, 14, tzinfo=timezone.utc), datetime(2100, 1, 1, tzinfo=timezone.utc), 0.45),
     ),
     'POLYGON': (
         (datetime(2000, 5, 30, tzinfo=timezone.utc), datetime(2026, 5, 5, tzinfo=timezone.utc), 2.17),
+        (datetime(2025, 10, 8, tzinfo=timezone.utc), datetime(2026, 5, 6, tzinfo=timezone.utc), 2.00),
+        (datetime(2026, 5, 6, tzinfo=timezone.utc), datetime(2026, 6, 3, tzinfo=timezone.utc), 1.75),
+        (datetime(2026, 6, 3, tzinfo=timezone.utc), datetime(2100, 1, 1, tzinfo=timezone.utc), 1.50),
     ),
 }

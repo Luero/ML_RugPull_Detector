@@ -18,8 +18,7 @@ from datetime import datetime, timezone
 import requests
 import time
 
-from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, MORALIS_BASE_URL, \
-    MORALIS_API_KEY, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS, \
+from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS, \
     NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE
 from feature_extraction_helpers.general_onchain_helpers import get_latest_block_eth, \
     get_deployment_block_and_timestamp, get_latest_block_with_timestamp, get_last_activity_timestamp, is_token_live, \
@@ -110,7 +109,6 @@ def get_number_of_transactions(chain, token_address, deployment_block, latest_bl
 
 # Extract the number of transactions for BSD from NodeReal
 # Reference: https://docs.nodereal.io/reference/nr_getassettransferscount
-# TODO: find an indexed API, too slow here
 def get_number_of_transactions_bsc(token_address, deployment_block, latest_block):
     if deployment_block is None or latest_block is None:
         return None
@@ -186,10 +184,16 @@ def get_onchain_features_live(chain, token_address):
 
 
 def main():
-     get_onchain_features_live('BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00')
+     get_onchain_features_live('BSC', '0x5108C0E857b30A8d191554134628fe0f1B7e78b4')
 
 
 
 
 if __name__ == "__main__":
     main()
+
+
+# For testing:
+# 'BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00') - PEPE, more than 2 mln transactions
+# 'BSC', '0x444045B0EE1ee319A660a5E3d604CA0ffA35ACaA' - BTW, more than 9 mln transactions
+# 'BSC', '0x5108C0E857b30A8d191554134628fe0f1B7e78b4' - TITANIA, small one, 90 000 transactions, 8000 holders
