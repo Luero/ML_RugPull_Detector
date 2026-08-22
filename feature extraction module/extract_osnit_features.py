@@ -53,6 +53,40 @@ def convert_cdr_date(timestamp):
     return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime('%m/%d/%Y')
 
 
+# Calculate midpoint timestamp between the start of trading activity (start date as in RugPull methodology)
+# and end of observation window (query time for live tokens, last activity for dead ones)
+def get_midpoint_timestamp(trading_start_timestamp, window_end):
+    return int(trading_start_timestamp + (window_end - trading_start_timestamp) / 2)
+
+
+# Extract 'Google results for project website (first day)', 'Google results for project x profile (first days)',
+# and 'Google results for project x profile (duration/2)' for a live-queried token
+# trading_start_timestamp is the first trading activity (earliest pool/pair creation), consistent to window_start for price extraction
+# If not found, use deployment_timestamp
+def get_osint_features_live(website_url, x_profile_url, trading_start_timestamp, window_end):
+    print("Google result counts are calculating...")
+    midpoint_timestamp = get_midpoint_timestamp(trading_start_timestamp, window_end)
+    website_first_day = None
+    if website_url:
+        website_first_day = get_google_result_count(website_url, trading_start_timestamp)
+    else:
+        print("No website URL available")
+
+    x_profile_first_day = None
+    x_profile_midpoint = None
+    if x_profile_url:
+        x_profile_first_day = get_google_result_count(x_profile_url, trading_start_timestamp)
+        x_profile_midpoint = get_google_result_count(x_profile_url, midpoint_timestamp)
+    else:
+        print("No X profile URL available")
+
+    return {
+        'Google results for project website (first day)': website_first_day,
+        'Google results for project x profile (first days)': x_profile_first_day,
+        'Google results for project x profile (duration/2)': x_profile_midpoint
+    }
+
+
 # TODO: extract website_url/x_profile_url to use as searh_term param for queried tokens
 
 
@@ -60,10 +94,9 @@ def main():
     website_url = 'pepe.vip'
     x_profile_url = 'twitter.com/pepecoineth'
     trading_start_timestamp = int(datetime(2023, 4, 17, tzinfo=timezone.utc).timestamp())
-    test_date = int(datetime(2025, 4, 17, tzinfo=timezone.utc).timestamp())     # to test 1-day window does not return 0
     window_end = int(time.time())
 
-    result = get_google_result_count(website_url, trading_start_timestamp)
+    result = get_osint_features_live(website_url, x_profile_url, trading_start_timestamp, window_end)
     print(result)
 
 
