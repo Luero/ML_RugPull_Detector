@@ -7,12 +7,6 @@
 # appear during API calls execution.
 
 
-# Features to extract (based on features list used by the model from the prediction module
-#['MaxPrice (Quarter 1)', 'MaxPrice (Quarter 2)', '',
-# 'Google results for project website (first day)', 'Google results for project x profile (first days)',
-# 'Google results for project x profile (duration/2)',
-
-
 from datetime import datetime, timezone
 
 import requests
@@ -184,7 +178,7 @@ def get_onchain_features_live(chain, token_address):
 
 
 def main():
-     get_onchain_features_live('BSC', '0x5108C0E857b30A8d191554134628fe0f1B7e78b4')
+     get_onchain_features_live('POLYGON', '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC')
 
 
 
@@ -197,3 +191,5 @@ if __name__ == "__main__":
 # 'BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00') - PEPE, more than 2 mln transactions
 # 'BSC', '0x444045B0EE1ee319A660a5E3d604CA0ffA35ACaA' - BTW, more than 9 mln transactions
 # 'BSC', '0x5108C0E857b30A8d191554134628fe0f1B7e78b4' - TITANIA, small one, 90 000 transactions, 8000 holders
+# 'ARBI', '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1' - GNO, big one
+# 'POLYGON', '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC' - LEO, small and recent

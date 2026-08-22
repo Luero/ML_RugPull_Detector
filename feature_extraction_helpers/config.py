@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 load_dotenv()
 
 # Sources of data
+# On-chain features, prices and contract code
 # https://docs.etherscan.io/api-reference
 ETHERSCAN_API_KEY = os.getenv('ETHERSCAN_API_KEY')
 ETHERSCAN_BASE_URL = 'https://api.etherscan.io/v2/api'
@@ -23,6 +24,11 @@ BLOCKSCOUT_BASE_URLS = {
     "ARBI": "https://arbitrum.blockscout.com",
     "POLYGON": "https://polygon.blockscout.com",
 }
+
+# Off-chain features
+# https://serpapi.com/search-api
+SERP_API_KEY = os.getenv('SERP_API_KEY')
+SERP_BASE_URL = "https://serpapi.com/search?engine=google"
 
 # Sometimes server return code 500 (internal server error), so 3 retries per call is set
 BLOCKSCOUT_MAX_RETRIES = 3

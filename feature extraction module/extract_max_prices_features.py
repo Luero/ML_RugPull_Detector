@@ -25,7 +25,7 @@ from feature_extraction_helpers.config import COINGECKO_CHAIN_IDS, GECKOTERMINAL
     GECKOTERMINAL_MAX_DEPTH_SECONDS
 from feature_extraction_helpers.general_onchain_helpers import query_coingecko, get_last_activity_timestamp, \
     is_token_live, get_deployment_block_and_timestamp, get_latest_block_with_timestamp, query_geckoterminal, \
-    query_moralis, get_deployment_block_and_timestamp_bsc
+    query_moralis
 
 # Thresholds to pick OHLCV candle resolution based on window length, based on CoinGecko convention.
 # More granularity for short living tokens (to catch rug-pull), increasing for long-living projects due to
@@ -294,8 +294,8 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, late
 
 
 def main():
-    address = '0xbF7c81FFF98BbE61B40Ed186e4AfD6DDd01337fe'
-    chain = 'BSC'
+    address = '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1'
+    chain = 'ARBI'
     deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, address)
     latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
     result = get_max_price_quarters_live(chain, address, deployment_timestamp, latest_block_timestamp, latest_block, deployment_block)
@@ -327,3 +327,5 @@ if __name__ == "__main__":
 # No data in any source:
     # address = '0x0c29891dc5060618c779e2a45fbe4808aa5ae6ad'
     # chain = 'ARBI'
+
+# 'ARBI', '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1' - GNO
