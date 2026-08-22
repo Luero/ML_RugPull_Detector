@@ -1,4 +1,6 @@
 # TODO: comment
+import re
+
 import requests
 from datetime import datetime, timezone
 import time
@@ -8,9 +10,12 @@ from feature_extraction_helpers.config import SERP_API_KEY, SERP_BASE_URL, DEXSC
 from feature_extraction_helpers.general_extraction_helpers import query_dexscreener, query_moralis, query_coingecko
 
 
-# Features to extract (based on features list used by the model from the prediction module
-# 'Google results for project website (first day)', 'Google results for project x profile (first days)',
-# 'Google results for project x profile (duration/2)'
+# Reference: https://www.snapper.studio/blog/twitter-rebrands
+X_REBRAND_TIMESTAMP = int(datetime(2023, 6, 24, tzinfo=timezone.utc).timestamp())
+
+# Raw X/Twitter reference in any shape a source might return it, since it turns out shape is not consistent even within one source:
+# e.g. Moralis returned a bare handle for PEPE, but 'https://twitter.com/gnosisdao' for GNO
+X_HANDLE_PATTERN = re.compile(r'(?:https?://)?(?:www\.)?(?:twitter\.com|x\.com)/@?([A-Za-z0-9_]+)|^@?([A-Za-z0-9_]+)$')
 
 
 # General function to query SerpApi's Google search engine
@@ -61,37 +66,6 @@ def get_midpoint_timestamp(trading_start_timestamp, window_end):
     return int(trading_start_timestamp + (window_end - trading_start_timestamp) / 2)
 
 
-# Extract 'Google results for project website (first day)', 'Google results for project x profile (first days)',
-# and 'Google results for project x profile (duration/2)' for a live-queried token
-# trading_start_timestamp is the first trading activity (earliest pool/pair creation), consistent to window_start for price extraction
-# If not found, use deployment_timestamp
-def get_osint_features_live(chain, token_address, trading_start_timestamp, window_end):
-    print("Google result counts are calculating...")
-    website_url, x_profile_url = get_project_socials(chain, token_address)
-    print("Querying SerpAPI...")
-    midpoint_timestamp = get_midpoint_timestamp(trading_start_timestamp, window_end)
-    website_first_day = None
-    if website_url:
-        website_first_day = get_google_result_count(website_url, trading_start_timestamp)
-    else:
-        print("No website URL available")
-
-    x_profile_first_day = None
-    x_profile_midpoint = None
-    if x_profile_url:
-        x_profile_first_day = get_google_result_count(x_profile_url, trading_start_timestamp)
-        x_profile_midpoint = get_google_result_count(x_profile_url, midpoint_timestamp)
-    else:
-        print("No X profile URL available")
-
-    return {
-        'Google results for project website (first day)': website_first_day,
-        'Google results for project x profile (first days)': x_profile_first_day,
-        'Google results for project x profile (duration/2)': x_profile_midpoint
-    }
-
-
-# TODO: Do I need to reconstruct X_profile url (with x.com) or handle is enough?
 # Extract token's website and X profile URL on DEXScreener
 # https://docs.dexscreener.com/api/reference#get-token-pairs-v1-chainid-tokenaddress
 def get_project_socials_dexscreener(chain, token_address):
@@ -106,22 +80,24 @@ def get_project_socials_dexscreener(chain, token_address):
         return None, None
 
     website_url = None
-    x_profile_url = None
+    x_profile_handle = None
     for pair in data:
         info = pair.get('info', {})
         if website_url is None:
             websites = info.get('websites', [])
             if websites:
                 website_url = websites[0].get('url')
-        if x_profile_url is None:
+        if x_profile_handle is None:
             socials = info.get('socials', [])
             match = next((s.get('handle') for s in socials if s.get('platform') in ('twitter', 'x')), None)
             if match:
-                x_profile_url = f"https://x.com/{match}"
-        if website_url and x_profile_url:
+                x_profile_handle = normalize_x_handle(match)
+                # TODO: delete later
+                print(x_profile_handle)
+        if website_url and x_profile_handle:
             break
 
-    return website_url, x_profile_url
+    return website_url, x_profile_handle
 
 
 # Extract token's website and X profile URL via Moralis
@@ -136,10 +112,11 @@ def get_project_socials_moralis(chain, token_address):
         return None, None
     links = data[0].get('links', {}) if isinstance(data, list) else data.get('links', {})
     website_url = links.get('website') or None
-    twitter = links.get('twitter') or None
-    x_profile_url = f"https://x.com/{twitter}" if twitter else None
+    x_profile_handle = normalize_x_handle(links.get('twitter'))
+    # TODO: delete later
+    print(x_profile_handle)
 
-    return website_url, x_profile_url
+    return website_url, x_profile_handle
 
 
 # Extract token's website and X profile URL via CoinGecko
@@ -156,10 +133,11 @@ def get_project_socials_coingecko(chain, token_address):
     links = data.get('links', {})
     homepages = links.get('homepage', [])
     website_url = next((url for url in homepages if url), None)
-    twitter_handle = links.get('twitter_screen_name') or None
-    x_profile_url = f"https://x.com/{twitter_handle}" if twitter_handle else None
+    x_profile_handle = normalize_x_handle(links.get('twitter_screen_name'))
+    # TODO: delete later
+    print(x_profile_handle)
 
-    return website_url, x_profile_url
+    return website_url, x_profile_handle
 
 
 # Extract token's website and X profile URL, trying sources in order: Moralis -> CoinGecko -> DEXScreener
@@ -181,11 +159,62 @@ def get_project_socials(chain, token_address):
     return website_url, x_profile_url
 
 
+# Re-construct x_profile url as a search term to use in SerpAPI queries
+def build_x_profile_search_term(handle, target_timestamp):
+    domain = 'x.com' if target_timestamp >= X_REBRAND_TIMESTAMP else 'twitter.com'
+    return f"{domain}/{handle}"
+
+
+# Normalise raw X/Twitter reference to a bare handle
+def normalize_x_handle(raw_value):
+    if not raw_value:
+        return None
+    raw_value = raw_value.strip().rstrip('/')
+    match = X_HANDLE_PATTERN.match(raw_value)
+    if not match:
+        print(f"Could not extract valid X handle from '{raw_value}'")
+        return None
+    return match.group(1) or match.group(2) or None
+
+
+# Extract 'Google results for project website (first day)', 'Google results for project x profile (first days)',
+# and 'Google results for project x profile (duration/2)' for a live-queried token
+# trading_start_timestamp is the first trading activity (earliest pool/pair creation), consistent to window_start for price extraction
+# If not found, use deployment_timestamp
+def get_osint_features_live(chain, token_address, trading_start_timestamp, window_end):
+    print("Google result counts are calculating...")
+    website_url, x_profile_handle = get_project_socials(chain, token_address)
+    print("Querying SerpAPI...")
+    midpoint_timestamp = get_midpoint_timestamp(trading_start_timestamp, window_end)
+    website_first_day = None
+    if website_url:
+        website_first_day = get_google_result_count(website_url, trading_start_timestamp)
+    else:
+        print("No website URL available")
+
+    x_profile_first_day = None
+    x_profile_midpoint = None
+    if x_profile_handle:
+        # Different search terms, since project start may occur before Twitter rebranding, and midpoint after
+        first_day_search_term = build_x_profile_search_term(x_profile_handle, trading_start_timestamp)
+        midpoint_search_term = build_x_profile_search_term(x_profile_handle, midpoint_timestamp)
+        x_profile_first_day = get_google_result_count(first_day_search_term, trading_start_timestamp)
+        x_profile_midpoint = get_google_result_count(midpoint_search_term, midpoint_timestamp)
+    else:
+        print("No X profile URL available")
+
+    return {
+        'Google results for project website (first day)': website_first_day,
+        'Google results for project x profile (first days)': x_profile_first_day,
+        'Google results for project x profile (duration/2)': x_profile_midpoint
+    }
+
+
 # TODO: use window_start from get_max_price_quarters_live when aggregating into one module
 def main():
-    chain, token_address = 'BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00'
+    chain, token_address = 'ETH', '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984'
     print(chain, token_address)
-    trading_start_timestamp = int(datetime(2023, 4, 17, tzinfo=timezone.utc).timestamp())
+    trading_start_timestamp = int(datetime(2024, 4, 17, tzinfo=timezone.utc).timestamp())
     window_end = int(time.time())
 
     result = get_osint_features_live(chain, token_address, trading_start_timestamp, window_end)
@@ -194,3 +223,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# For tests:
+# chain, token_address = 'BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00' - PEPE
+# 'ARBI', '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1' - GNO, big one
+# 'POLYGON', '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC' - small and recent - None, no socials found
+# 'ETH', '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984' - Uniswap, big and old
