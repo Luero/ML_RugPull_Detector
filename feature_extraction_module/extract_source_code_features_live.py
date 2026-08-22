@@ -3,7 +3,7 @@
 import json
 import math
 
-from feature_extraction_helpers.general_onchain_helpers import query_etherscan
+from feature_extraction_helpers.general_extraction_helpers import query_etherscan
 from feature_extraction_helpers.source_code_helplers import is_bytecode, has_contract_swap_patterns, has_owner_guard
 
 

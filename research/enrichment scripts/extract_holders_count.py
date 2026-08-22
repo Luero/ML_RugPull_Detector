@@ -16,7 +16,7 @@
 
 from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
 from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
-from feature_extraction_helpers.general_onchain_helpers import get_latest_block_eth
+from feature_extraction_helpers.general_extraction_helpers import get_latest_block_eth
 
 
 # Time for snapshots in hours

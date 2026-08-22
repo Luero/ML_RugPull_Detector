@@ -29,6 +29,8 @@ BLOCKSCOUT_BASE_URLS = {
 # https://serpapi.com/search-api
 SERP_API_KEY = os.getenv('SERP_API_KEY')
 SERP_BASE_URL = "https://serpapi.com/search?engine=google"
+# https://docs.dexscreener.com/api/reference (is used to get website URL and X profile based on token address)
+DEXSCREENER_BASE_URL = "https://api.dexscreener.com"
 
 # Sometimes server return code 500 (internal server error), so 3 retries per call is set
 BLOCKSCOUT_MAX_RETRIES = 3
@@ -55,6 +57,9 @@ MORALIS_CHAIN_IDS = {"ETH": "0x1", "BSC": "0x38", "POLYGON": "0x89", "ARBI": "0x
 COINGECKO_CHAIN_IDS = {'ETH': 'ethereum', 'BSC': 'binance-smart-chain', 'POLYGON': 'polygon-pos', 'ARBI': 'arbitrum-one'}
 # Reference: https://docs.coingecko.com/demo/reference/networks-list
 GECKOTERMINAL_NETWORK_IDS = {'ETH': 'eth', 'BSC': 'bsc', 'POLYGON': 'polygon_pos', 'ARBI': 'arbitrum'}
+
+# IDs of chains suppported by DEXScreener
+DEXSCREENER_CHAIN_IDS = {'ETH': 'ethereum', 'BSC': 'bsc', 'POLYGON': 'polygon', 'ARBI': 'arbitrum'}
 
 # Historical data available only for 180 days in the past for demo API key
 GECKOTERMINAL_MAX_DEPTH_SECONDS = 180 * 24 * 3600

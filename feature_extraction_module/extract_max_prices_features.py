@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 
 from feature_extraction_helpers.config import COINGECKO_CHAIN_IDS, GECKOTERMINAL_NETWORK_IDS, MORALIS_CHAIN_IDS, \
     GECKOTERMINAL_MAX_DEPTH_SECONDS
-from feature_extraction_helpers.general_onchain_helpers import query_coingecko, get_last_activity_timestamp, \
+from feature_extraction_helpers.general_extraction_helpers import query_coingecko, get_last_activity_timestamp, \
     is_token_live, get_deployment_block_and_timestamp, get_latest_block_with_timestamp, query_geckoterminal, \
     query_moralis
 
@@ -281,6 +281,7 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, late
     if prices is not None:
         result = compute_quarters(prices, deployment_timestamp, window_end, 'coingecko')
         if not (math.isnan(result['MaxPrice (Quarter 1)']) and math.isnan(result['MaxPrice (Quarter 2)'])):
+            result['window_start'] = deployment_timestamp
             return result
         print(f"CoinGecko data for {token_address} on {chain} doesn't cover Q1/Q2, trying other sources")
     else:
@@ -288,9 +289,11 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, late
 
     window_start, prices, price_source = try_geckoterminal_or_moralis(chain, token_address, window_end)
     if prices is None:
-        return {'MaxPrice (Quarter 1)': math.nan, 'MaxPrice (Quarter 2)': math.nan, 'price_source': None}
+        return {'MaxPrice (Quarter 1)': math.nan, 'MaxPrice (Quarter 2)': math.nan, 'price_source': None, 'window_start': None}
 
-    return compute_quarters(prices, window_start, window_end, price_source)
+    result = compute_quarters(prices, window_start, window_end, price_source)
+    result['window_start'] = window_start
+    return result
 
 
 def main():

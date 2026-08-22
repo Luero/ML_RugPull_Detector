@@ -1,5 +1,5 @@
 # Extract features from any queried token on Eth, BSC, Arbitrum or Polygon using token contract address and blockchain
-# Is used for feature extraction module of the application. Once extracted, features are submitted to the prediction module,
+# Is used for feature_extraction_module of the application. Once extracted, features are submitted to the prediction module,
 # where the developed model consume them to make a prediction
 
 # To achieve consistency among features extracted per a single query, the last block at the time of query is used to get
@@ -14,7 +14,7 @@ import time
 
 from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS, \
     NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE
-from feature_extraction_helpers.general_onchain_helpers import get_latest_block_eth, \
+from feature_extraction_helpers.general_extraction_helpers import get_latest_block_eth, \
     get_deployment_block_and_timestamp, get_latest_block_with_timestamp, get_last_activity_timestamp, is_token_live, \
     query_moralis, query_meganode
 from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots

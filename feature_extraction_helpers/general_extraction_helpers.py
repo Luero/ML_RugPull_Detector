@@ -9,7 +9,7 @@ from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN
     ETHERSCAN_BASE_URL, \
     NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS, COINGECKO_BASE_URL, COINGECKO_TIME_INTERVAL, \
     COINGECKO_API_KEY, GECKOTERMINAL_TIME_INTERVAL, GECKOTERMINAL_BASE_URL, MORALIS_TIME_INTERVAL, MORALIS_API_KEY, \
-    MORALIS_BASE_URL, NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE
+    MORALIS_BASE_URL, NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE, DEXSCREENER_BASE_URL
 
 # Based on TM-RugPull methodology
 LIVE_THRESHOLD_HOURS = 72
@@ -112,6 +112,16 @@ def query_moralis(endpoint, params=None):
         print(response.json())
         return None
 
+    return response.json()
+
+
+# General function to query DEXScreener's public endpoints
+# Reference: https://docs.dexscreener.com/api/reference
+def query_dexscreener(endpoint):
+    response = requests.get(f"{DEXSCREENER_BASE_URL}{endpoint}", timeout=30)
+    if response.status_code != 200:
+        print(f"HTTP error {response.status_code} for DEXScreener endpoint {endpoint}")
+        return None
     return response.json()
 
 
