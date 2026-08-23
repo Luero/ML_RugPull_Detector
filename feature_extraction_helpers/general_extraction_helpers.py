@@ -204,13 +204,17 @@ def get_latest_block_with_timestamp(chain):
         latest_block = get_latest_block_meganode()
         if latest_block is None:
             return None, None
-        latest_block_timestamp = datetime.fromtimestamp(get_block_timestamp_meganode(latest_block), tz=timezone.utc)
-        return latest_block, latest_block_timestamp
+        latest_block_timestamp = get_block_timestamp_meganode(latest_block)
+        if latest_block_timestamp is None:
+            return None, None
+        return latest_block, datetime.fromtimestamp(latest_block_timestamp, tz=timezone.utc)
     latest_block = get_latest_block_eth(chain)
     if latest_block is None:
         return None, None
-    latest_block_timestamp = datetime.fromtimestamp(get_block_timestamp(chain, latest_block), tz=timezone.utc)
-    return latest_block, latest_block_timestamp
+    latest_block_timestamp = get_block_timestamp(chain, latest_block)
+    if latest_block_timestamp is None:
+        return None, None
+    return latest_block, datetime.fromtimestamp(latest_block_timestamp, tz=timezone.utc)
 
 
 # Binary search for Arbitrum tokens: search for block closest to to_timestamp

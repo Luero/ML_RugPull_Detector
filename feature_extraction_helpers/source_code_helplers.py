@@ -153,8 +153,6 @@ def get_contract_source_code(chain, token_address):
         return None
 
     normalized_source_code = normalize_source_code(source_code)
-    print(normalized_source_code)
-
     return normalized_source_code
 
 

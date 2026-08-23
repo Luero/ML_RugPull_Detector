@@ -169,14 +169,13 @@ def get_max_price_in_range(prices, from_timestamp, to_timestamp):
 
 
 # Determine the end of the quarter window: query time for active tokens and last activity timestamp for dead tokens
-def get_window_end_timestamp(chain, token_address, latest_block_timestamp, latest_block, deployment_block):
-    last_activity_timestamp = get_last_activity_timestamp(chain, token_address, latest_block, deployment_block)
+def get_window_end_timestamp(latest_block_timestamp, last_activity_timestamp):
     if is_token_live(last_activity_timestamp, latest_block_timestamp):
-        return int(time.time())
+        return int(latest_block_timestamp.timestamp())
     if last_activity_timestamp is not None:
         return last_activity_timestamp
     # No activity ever recorded, use time of query
-    return int(time.time())
+    return int(latest_block_timestamp.timestamp())
 
 
 # Calculate quarters to use for price extraction

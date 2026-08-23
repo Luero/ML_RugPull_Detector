@@ -14,9 +14,7 @@ import time
 
 from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS, \
     NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE
-from feature_extraction_helpers.general_extraction_helpers import get_latest_block_eth, \
-    get_deployment_block_and_timestamp, get_latest_block_with_timestamp, get_last_activity_timestamp, is_token_live, \
-    query_moralis, query_meganode
+from feature_extraction_helpers.general_extraction_helpers import is_token_live, query_moralis, query_meganode
 from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
 
 
@@ -25,13 +23,12 @@ TIME_FOR_SNAPSHOTS_HOURS = (12, 24)
 
 
 # Extract project period as required for prediction ('project period (days)')
-def get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp, latest_block):
+def get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp, last_activity_timestamp):
     if deployment_block is None:
         print(f"No deployment block found for {token_address} on {chain}")
         return None
     print("Project period is calculating...")
     start_date = datetime.fromtimestamp(deployment_timestamp, tz=timezone.utc)
-    last_activity_timestamp = get_last_activity_timestamp(chain, token_address, latest_block, deployment_block)
     if is_token_live(last_activity_timestamp, latest_block_timestamp):
         end_date = latest_block_timestamp
     elif last_activity_timestamp is not None:
@@ -44,11 +41,11 @@ def get_project_period_days(chain, token_address, deployment_block, deployment_t
 
 
 # Extract 'Holders_12h', 'Holders_24h' features
-def get_holders_count_snapshots(chain, token_address, time_for_snapshots_hour):
+def get_holders_count_snapshots(chain, token_address, time_for_snapshots_hour, deployment_block, deployment_timestamp, latest_block):
     print("Holders count snapshots are calculating...")
-    latest_arbitrum_block = get_latest_block_eth('ARBI') if chain == 'ARBI' else None
+    latest_arbitrum_block = latest_block if chain == 'ARBI' else None
     # Time for snapshots in hours that are used by the model
-    snapshots = get_holders_snapshots(chain, token_address, time_for_snapshots_hour, latest_arbitrum_block)
+    snapshots = get_holders_snapshots(chain, token_address, time_for_snapshots_hour, latest_arbitrum_block, deployment_block, deployment_timestamp)
     return snapshots
 
 
@@ -161,32 +158,18 @@ def get_current_token_holder_count_bsc(token_address):
 
 
 def get_onchain_features_live(chain, token_address, deployment_block, deployment_timestamp, latest_block, latest_block_timestamp, last_activity_timestamp):
-    project_period_days = get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp, latest_block)
-    snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS)
+    project_period_days = get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp, last_activity_timestamp)
+    snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS, deployment_block, deployment_timestamp, latest_block)
     blockchain_type = get_blockchain_type(chain)
     number_of_transactions = get_number_of_transactions(chain, token_address, deployment_block, latest_block)
     current_token_holder_count = get_current_token_holder_count(chain, token_address)
-    print("project_period_days:", project_period_days)
-    print("snapshots:", snapshots)
-    print("blockchain_type:", blockchain_type)
-    print("number_of_transactions:", number_of_transactions)
-    print("current_token_holder_count:", current_token_holder_count)
 
+    features = {
+        'project period (days)': project_period_days,
+        'the number of Transactions': number_of_transactions,
+        'Number of holders': current_token_holder_count,
+        'Blockchain Type': blockchain_type,
+    }
+    features.update(snapshots)
 
-
-def main():
-     get_onchain_features_live('POLYGON', '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC')
-
-
-
-
-if __name__ == "__main__":
-    main()
-
-
-# For testing:
-# 'BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00') - PEPE, more than 2 mln transactions
-# 'BSC', '0x444045B0EE1ee319A660a5E3d604CA0ffA35ACaA' - BTW, more than 9 mln transactions
-# 'BSC', '0x5108C0E857b30A8d191554134628fe0f1B7e78b4' - TITANIA, small one, 90 000 transactions, 8000 holders
-# 'ARBI', '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1' - GNO, big one
-# 'POLYGON', '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC' - LEO, small and recent
+    return features

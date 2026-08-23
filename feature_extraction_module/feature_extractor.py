@@ -1,6 +1,7 @@
 # TODO: general description
+
 from feature_extraction_helpers.source_code_helplers import get_source_code_features_live
-from feature_extraction_module.extract_onchain_features_live import get_onchain_features_live
+from feature_extraction_helpers.onchain_extraction_helpers import get_onchain_features_live
 from feature_extraction_helpers.prices_extraction_helpers import get_max_price_quarters_live, get_window_end_timestamp
 from feature_extraction_helpers.osnit_extraction_helpers import get_osint_features_live
 from feature_extraction_helpers.general_extraction_helpers import get_latest_block_with_timestamp, \
@@ -110,3 +111,10 @@ if __name__ == "__main__":
 # 'ARBI', '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1' - GNO, big one
 # 'POLYGON', '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC' - small and recent - None, no socials found
 # 'ETH', '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984' - Uniswap, big and old
+
+# From onchain_extractor_helper
+# 'BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00') - PEPE, more than 2 mln transactions
+# 'BSC', '0x444045B0EE1ee319A660a5E3d604CA0ffA35ACaA' - BTW, more than 9 mln transactions
+# 'BSC', '0x5108C0E857b30A8d191554134628fe0f1B7e78b4' - TITANIA, small one, 90 000 transactions, 8000 holders
+# 'ARBI', '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1' - GNO, big one
+# 'POLYGON', '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC' - LEO, small and recent
