@@ -21,11 +21,9 @@ import math
 import time
 from datetime import datetime, timezone
 
-from feature_extraction_helpers.config import COINGECKO_CHAIN_IDS, GECKOTERMINAL_NETWORK_IDS, MORALIS_CHAIN_IDS, \
-    GECKOTERMINAL_MAX_DEPTH_SECONDS
-from feature_extraction_helpers.general_extraction_helpers import query_coingecko, get_last_activity_timestamp, \
-    is_token_live, get_deployment_block_and_timestamp, get_latest_block_with_timestamp, query_geckoterminal, \
-    query_moralis
+from feature_extraction_helpers.config import COINGECKO_CHAIN_IDS, GECKOTERMINAL_NETWORK_IDS, MORALIS_CHAIN_IDS, GECKOTERMINAL_MAX_DEPTH_SECONDS
+from feature_extraction_helpers.general_extraction_helpers import query_coingecko, is_token_live, query_geckoterminal, query_moralis
+
 
 # Thresholds to pick OHLCV candle resolution based on window length, based on CoinGecko convention.
 # More granularity for short living tokens (to catch rug-pull), increasing for long-living projects due to
@@ -60,7 +58,7 @@ f"/coins/{blockchain}/contract/{token_address}/market_chart/range",
     if data is None or not data.get('prices'):
         return None
 
-    print(f"CoinGecko path succeeded for {token_address} on {blockchain}")
+    print(f"...CoinGecko path succeeded for {token_address} on {blockchain}")
     # CoinGecko timestamps are in milliseconds, normalizing required to match CoinGeckoTerminal
     return [(timestamp_ms / 1000, price) for timestamp_ms, price in data['prices']]
 
@@ -75,7 +73,7 @@ def get_top_pool_address(chain, token_address):
     network = GECKOTERMINAL_NETWORK_IDS[chain]
     data = query_geckoterminal(f"/networks/{network}/tokens/{token_address}/pools")
     if data is None or not data.get('data'):
-        print(f"No pools found for {token_address} on {chain}")
+        print(f"...No pools found for {token_address} on {chain}")
         return None, None, None, None, None
 
     candidate_pools = []
@@ -99,8 +97,8 @@ def get_top_pool_address(chain, token_address):
     pools_with_creation_date = [pool for pool in candidate_pools if pool[2] is not None]
     earliest_pool = min(pools_with_creation_date, key=lambda item: item[2])
     earliest_reserve, earliest_pool_address, earliest_pool_created_at, earliest_token_side = earliest_pool
-    print(f"Selected pool {top_pool_address} with reserve ${top_reserve:,.0f} (token is {top_token_side}); "
-          f"earliest pool {earliest_pool_address} created {earliest_pool_created_at} (token is {earliest_token_side})")
+    print(f"...Selected pool {top_pool_address} with reserve ${top_reserve:,.0f} (token is {top_token_side}). "
+          f"Earliest pool {earliest_pool_address} created {earliest_pool_created_at} (token is {earliest_token_side})")
 
     return top_pool_address, earliest_pool_created_at, earliest_pool_address, top_token_side, earliest_token_side
 
@@ -130,7 +128,7 @@ def choose_moralis_timeframe(window_seconds):
 def get_ohlcv_history(chain, pool_address, from_timestamp, to_timestamp, token_side):
     network = GECKOTERMINAL_NETWORK_IDS[chain]
     timeframe, aggregate = choose_ohlcv_timeframe_gecko(to_timestamp - from_timestamp)
-    print(f"Fetching {timeframe} candles (aggregate={aggregate}) for pool {pool_address} via GeckoTerminal (token={token_side})")
+    print(f"...Fetching {timeframe} candles (aggregate={aggregate}) for pool {pool_address} via GeckoTerminal (token={token_side})")
 
     all_candles = []
     cursor_timestamp = to_timestamp
@@ -205,7 +203,7 @@ def parse_moralis_timestamp(timestamp_str):
 def get_prices_moralis_pair(chain, pair_address, from_timestamp, to_timestamp):
     moralis_chain = MORALIS_CHAIN_IDS.get(chain)
     timeframe = choose_moralis_timeframe(to_timestamp - from_timestamp)
-    print(f"Fetching {timeframe} candles for pair {pair_address} via Moralis")
+    print(f"...Fetching {timeframe} candles for pair {pair_address} via Moralis")
 
     all_prices = []
     cursor = None
@@ -217,7 +215,7 @@ def get_prices_moralis_pair(chain, pair_address, from_timestamp, to_timestamp):
         data = query_moralis(f"/pairs/{pair_address}/ohlcv", params=params)
         if data is None:
             return all_prices, True
-        print(f"Moralis returned {len(data.get('result', []))} candles, cursor={data.get('cursor')}")
+        print(f"...Moralis returned {len(data.get('result', []))} candles, cursor={data.get('cursor')}")
 
         candles = data.get('result', [])
         for candle in candles:
@@ -230,7 +228,7 @@ def get_prices_moralis_pair(chain, pair_address, from_timestamp, to_timestamp):
     return all_prices, False
 
 
-# Attempt to fetch data from either Geckoterminal or Moralis
+# Attempt to fetch data from either Geckoterminal or Moralis.
 # Since Moralis does not have timestamps on its /pairs endpoint, Geckoterminal is used to get the earliest pool, but
 # prices are queried either via Geckoterminal or Moralis, depending on the date of this pool, because Geckoterminal
 # gives prices not later than 180 days under demo API key
@@ -251,14 +249,14 @@ def try_geckoterminal_or_moralis(chain, token_address, window_end):
         # Checks whether full history up to window_start + 5 minutes (fixed source boundary for collection prices) is returned
         # If not, fetch the highest prices available from either top pool, or the earliest pool
         if candles[-1][0] > window_start + 300 and earliest_pool_adr != top_pool_adr:
-            print(f"Pool {top_pool_adr} doesn't reach window start, merging in earliest pool {earliest_pool_adr}")
+            print(f"...Pool {top_pool_adr} doesn't reach window start, merging in earliest pool {earliest_pool_adr}")
             earliest_candles, earliest_had_failure = get_ohlcv_history(chain, earliest_pool_adr, window_start, window_end, earliest_token_side)
             if not earliest_had_failure and earliest_candles:
                 candles += earliest_candles
         prices = transform_candles_to_prices(candles)
         price_source = 'geckoterminal'
     else:
-        print(f"Time window is before GeckoTerminal's depth limit, searching the earliest pool {earliest_pool_adr} in Moralis")
+        print(f"...Time window is before GeckoTerminal's depth limit, searching the earliest pool {earliest_pool_adr} in Moralis")
         # Get aggregated prices for a Moralis pair
         # Reference: https://docs.moralis.com/data-api/evm/price/ohlc
         prices, had_failure = get_prices_moralis_pair(chain, earliest_pool_adr, window_start, window_end)
@@ -269,9 +267,9 @@ def try_geckoterminal_or_moralis(chain, token_address, window_end):
     return window_start, prices, price_source
 
 
-# Extract 'MaxPrice (Quarter 1)', 'MaxPrice (Quarter 2)' for a live-queried token
-# Tries CoinGecko API first. If a queried token is not listed here (result is None)), tries either GeckoTerminal, or Moralis
-# depending on how old is a queried token
+# Extract 'MaxPrice (Quarter 1)', 'MaxPrice (Quarter 2)' for a live-queried token.
+# Tries CoinGecko API first. If a queried token is not listed here (result is None), tries either GeckoTerminal, or Moralis
+# depending on how old is a queried token.
 def get_max_price_quarters_live(chain, token_address, deployment_timestamp, window_end):
     print("MaxPrice (Quarter 1)/(Quarter 2) are calculating...")
     prices = get_prices_coingecko(chain, token_address, deployment_timestamp, window_end)
@@ -280,9 +278,9 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, wind
         if not (math.isnan(result['MaxPrice (Quarter 1)']) and math.isnan(result['MaxPrice (Quarter 2)'])):
             result['window_start'] = deployment_timestamp
             return result
-        print(f"CoinGecko data for {token_address} on {chain} doesn't cover Q1/Q2, trying other sources")
+        print(f"...CoinGecko data for {token_address} on {chain} doesn't cover Q1/Q2, trying other sources")
     else:
-        print(f"CoinGecko has no data for {token_address} on {chain}, trying other sources")
+        print(f"...CoinGecko has no data for {token_address} on {chain}, trying other sources")
 
     window_start, prices, price_source = try_geckoterminal_or_moralis(chain, token_address, window_end)
     if prices is None:
@@ -291,4 +289,3 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, wind
     result = compute_quarters(prices, window_start, window_end, price_source)
     result['window_start'] = window_start
     return result
-

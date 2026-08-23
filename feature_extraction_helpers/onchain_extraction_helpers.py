@@ -1,10 +1,6 @@
-# Extract features from any queried token on Eth, BSC, Arbitrum or Polygon using token contract address and blockchain
+# Extract features from any queried token on Eth, BSC, Arbitrum or Polygon using token contract address and blockchain.
 # Is used for feature_extraction_module of the application. Once extracted, features are submitted to the prediction module,
-# where the developed model consume them to make a prediction
-
-# To achieve consistency among features extracted per a single query, the last block at the time of query is used to get
-# other features dependent on that information (not separate calls to retrieve the last block per feature, as blocks may
-# appear during API calls execution.
+# where the developed model consume them to make a prediction.
 
 
 from datetime import datetime, timezone
@@ -25,7 +21,7 @@ TIME_FOR_SNAPSHOTS_HOURS = (12, 24)
 # Extract project period as required for prediction ('project period (days)')
 def get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp, last_activity_timestamp):
     if deployment_block is None:
-        print(f"No deployment block found for {token_address} on {chain}")
+        print(f"...No deployment block found for {token_address} on {chain}")
         return None
     print("Project period is calculating...")
     start_date = datetime.fromtimestamp(deployment_timestamp, tz=timezone.utc)
@@ -60,20 +56,20 @@ def get_blockchain_type(chain):
 def get_token_counters(chain, token_address):
     base_url = BLOCKSCOUT_BASE_URLS.get(chain)
     if base_url is None:
-        print(f"No Blockscout instance configured for {chain}")
+        print(f"...No Blockscout instance configured for {chain}")
         return None
     for attempt in range(1, BLOCKSCOUT_MAX_RETRIES + 1):
         try:
             response = requests.get(f"{base_url}/api/v2/tokens/{token_address}/counters", timeout=30)
         except requests.RequestException as e:
-            print(f"Request error for {token_address} (attempt {attempt}/{BLOCKSCOUT_MAX_RETRIES}): {e}")
+            print(f"...Request error for {token_address} (attempt {attempt}/{BLOCKSCOUT_MAX_RETRIES}): {e}")
             if attempt < BLOCKSCOUT_MAX_RETRIES:
                 time.sleep(BLOCKSCOUT_RETRY_DELAY_SECONDS)
                 continue
             return None
         if response.status_code == 200:
             return response.json()
-        print(f"HTTP {response.status_code} for {token_address} (attempt {attempt}/{BLOCKSCOUT_MAX_RETRIES}): {response.text}")
+        print(f"...HTTP {response.status_code} for {token_address} (attempt {attempt}/{BLOCKSCOUT_MAX_RETRIES}): {response.text}")
         if attempt < BLOCKSCOUT_MAX_RETRIES:
             time.sleep(BLOCKSCOUT_RETRY_DELAY_SECONDS)
 
@@ -92,13 +88,13 @@ def get_number_of_transactions(chain, token_address, deployment_block, latest_bl
         return None
     transfers_count = counters.get("transfers_count")
     if transfers_count is None:
-        print(f"No transfers_count field for {token_address}")
+        print(f"...No transfers_count field for {token_address}")
         return None
 
     return int(transfers_count)
 
 
-# Extract the number of transactions for BSD from NodeReal
+# Extract the number of transactions for BSC from NodeReal
 # Reference: https://docs.nodereal.io/reference/nr_getassettransferscount
 def get_number_of_transactions_bsc(token_address, deployment_block, latest_block):
     if deployment_block is None or latest_block is None:
@@ -114,7 +110,7 @@ def get_number_of_transactions_bsc(token_address, deployment_block, latest_block
             'toBlock': hex(to_block),
         }])
         if result is None:
-            print(f"Failed to get transfer count for {token_address} in block range {from_block}-{to_block}")
+            print(f"...Failed to get transfer count for {token_address} in block range {from_block}-{to_block}")
             return None
         total_transfers += int(result, 16)
         from_block = to_block + 1
@@ -133,7 +129,7 @@ def get_current_token_holder_count(chain, token_address):
         return None
     holders_count = counters.get("token_holders_count")
     if holders_count is None:
-        print(f"No token_holders_count field for {token_address}")
+        print(f"...No token_holders_count field for {token_address}")
         return None
 
     return int(holders_count)
@@ -147,11 +143,11 @@ def get_current_token_holder_count_bsc(token_address):
     moralis_chain = MORALIS_CHAIN_IDS.get('BSC')
     data = query_moralis(f"/erc20/{token_address}/holders", {"chain": moralis_chain})
     if data is None:
-        print(f"No holder data for {token_address}")
+        print(f"...No holder data for {token_address}")
         return None
     total_holders = data.get("totalHolders")
     if total_holders is None:
-        print(f"No totalHolders field for {token_address}")
+        print(f"...No totalHolders field for {token_address}")
         return None
 
     return int(total_holders)

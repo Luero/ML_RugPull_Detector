@@ -1,4 +1,5 @@
-# TODO: comments
+# Helper functions to extract holder count snapshots
+# Used both for the dataset enrichment and for live feature extraction pipeline
 
 import math
 
@@ -13,7 +14,7 @@ def get_transfer_logs(chain, token_address, from_block, to_block):
     had_failure = False
 
     if from_block > to_block:
-        print(f"From_block ({from_block}) > to_block ({to_block})")
+        print(f"...From_block ({from_block}) > to_block ({to_block})")
         return [], had_failure
 
     if chain != 'BSC':
@@ -30,6 +31,7 @@ def get_transfer_logs(chain, token_address, from_block, to_block):
     return all_logs, had_failure
 
 
+# Etherscan-specific function to retrieve transfer logs
 def get_transfer_logs_etherscan(chain, token_address, from_block, to_block):
     chunk_logs = []
     page = 1
@@ -38,7 +40,7 @@ def get_transfer_logs_etherscan(chain, token_address, from_block, to_block):
         if page * ETH_LOG_RESULT_LIMIT > 10000:
             # Prevents infinite recursion
             if from_block == to_block:
-                print(f"Too many logs in block {from_block} for {token_address}")
+                print(f"...Too many logs in block {from_block} for {token_address}")
                 return chunk_logs, True
             mid_block = (from_block + to_block) // 2
             left_logs, left_failure = get_transfer_logs_etherscan(chain, token_address, from_block, mid_block)
@@ -62,6 +64,7 @@ def get_transfer_logs_etherscan(chain, token_address, from_block, to_block):
     return chunk_logs, False
 
 
+# Retrieve transfer logs for BSC tokens using NodeReal API
 # Get one chunk from NodeReal (for BSC tokens) considering API result limitations
 # If limit is hit, function divides results and treats each half separately
 # https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
@@ -78,7 +81,7 @@ def get_transfer_logs_bsc(token_address, from_block, to_block):
     # Handles situation when number of logs returned exceeds API limit (50000)
     if result == 'LOG_LIMIT_EXCEEDED':
         if from_block == to_block:
-            print(f"Too many logs in block {from_block} for {token_address}")
+            print(f"...Too many logs in block {from_block} for {token_address}")
             return [], True
         mid_block = (from_block + to_block) // 2
         left_logs, left_failure = get_transfer_logs_bsc(token_address, from_block, mid_block)
@@ -106,8 +109,9 @@ def get_transfer_value_from_log(log):
     # non-standard ERC-20 contract definition for Transfer event, thus, it needs to be handled
     if len(log['topics']) > 3:
         return int(log['topics'][-1], 16)
-    print(f"Unsupported Transfer event format for {log['address']})")
+    print(f"...Unsupported Transfer event format for {log['address']})")
     return None
+
 
 # Extract address from topic value
 def get_address_from_topic(topic):
@@ -146,7 +150,7 @@ def count_holders_for_snapshots(logs, target_blocks):
         to_address = get_address_from_topic(log['topics'][2])
         value = get_transfer_value_from_log(log)
         if value is None:
-            print(f"Token {log['address']} skipped: unsupported Transfer event.")
+            print(f"...Token {log['address']} skipped: unsupported Transfer event")
             return None
         debit_from_address(balances, from_address, value)
         credit_to_address(balances, to_address, value)
@@ -180,7 +184,7 @@ def get_holders_snapshots(chain, token_address, time_for_snapshot_hours, latest_
     max_block = max(target_blocks.values())
     logs, had_failure = get_transfer_logs(chain, token_address, int(deployment_block), max_block)
     if had_failure:
-        print(f"Log failure for {token_address}")
+        print(f"...Log failure for {token_address}")
         return {f"Holders_{h}h": math.nan for h in time_for_snapshot_hours}
     logs.sort(key=get_block_number_from_log)
     snapshots = count_holders_for_snapshots(logs, target_blocks)

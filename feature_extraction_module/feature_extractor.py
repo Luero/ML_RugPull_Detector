@@ -1,4 +1,9 @@
-# TODO: general description
+# Contains a class aimed to combine all feature extraction helpers into a singe pipeline.
+# It needs a chain and a token address.
+# Firstly, extracts token's shared context (values that are re-used later in different extraction scripts),
+# then in extract_features calls feature extraction functions one by one (prices -> onchain -> source code -> OSINT).
+# Returns a dictionary with extracted features, named as relevant features in the dataset, to be consumed by prediction module.
+
 
 from feature_extraction_helpers.source_code_helplers import get_source_code_features_live
 from feature_extraction_helpers.onchain_extraction_helpers import get_onchain_features_live
@@ -30,11 +35,11 @@ class FeatureExtractor:
         # for all features for consistency (not separate calls for the last block per feature, as blocks may appear during API calls execution)
         self.latest_block, self.latest_block_timestamp = get_latest_block_with_timestamp(self.chain)
         if self.latest_block is None:
-            print(f"Could not get the latest block for {self.chain}")
+            print(f"...Could not get the latest block for {self.chain}")
             return False
         self.deployment_block, self.deployment_timestamp = get_deployment_block_and_timestamp(self.chain, self.token_address)
         if self.deployment_block is None:
-            print(f"Could not get deployment info for {self.token_address} on {self.chain}")
+            print(f"...Could not get deployment info for {self.token_address} on {self.chain}")
             return False
         self.last_activity_timestamp = get_last_activity_timestamp(self.chain, self.token_address, self.latest_block, self.deployment_block)
         self.window_end = get_window_end_timestamp(self.latest_block_timestamp, self.last_activity_timestamp)
@@ -74,7 +79,7 @@ class FeatureExtractor:
 
 
 def main():
-    extractor = FeatureExtractor('POLYGON', '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC')
+    extractor = FeatureExtractor('BSC', '0x5108C0E857b30A8d191554134628fe0f1B7e78b4')
     features = extractor.extract_features()
     print(features)
 

@@ -1,4 +1,5 @@
-# TODO: general comment
+# Contains constants that are reused through feature extraction functions, including API keys and base URLs for
+# data sources, source-specific chain ID resolutions, API limits, waiting intervals
 
 import os
 
@@ -14,7 +15,7 @@ ETHERSCAN_API_KEY = os.getenv('ETHERSCAN_API_KEY')
 ETHERSCAN_BASE_URL = 'https://api.etherscan.io/v2/api'
 # https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
 NODEREAL_API_KEY = os.getenv('NODEREAL_API_KEY')
-MEGANODE_BSC_URL = (f'https://bsc-mainnet.nodereal.io/v1/{NODEREAL_API_KEY}')
+MEGANODE_BSC_URL = f'https://bsc-mainnet.nodereal.io/v1/{NODEREAL_API_KEY}'
 # https://docs.moralis.com/data-api/evm/token/holders/token-holder-stats
 MORALIS_BASE_URL = "https://deep-index.moralis.io/api/v2.2"
 MORALIS_API_KEY = os.getenv('MORALIS_API_KEY')

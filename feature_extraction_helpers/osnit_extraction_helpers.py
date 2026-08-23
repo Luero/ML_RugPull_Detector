@@ -1,11 +1,19 @@
-# TODO: general comment
+# Contains functions to extract OSINT features ('Google results for project website (first day)', 'Google results for project x profile (first days)',
+# 'Google results for project x profile (duration/2)') for a live-queried token.
+#
+# Primary source of search results is SerpAPI. Also uses three sources to resolve search_term (project's socials):
+# Moralis, CoinGecko and DEXScreener, used in complimentary manner to extend coverage.
+#
+# For X profile normalises return values to a bare handle, since they have inconsistent format, then reconstruct
+# a search_term depending on time (before / after Twitter's rebranding).
+
+
 import re
 
 import requests
 from datetime import datetime, timezone
 
-from feature_extraction_helpers.config import SERP_API_KEY, SERP_BASE_URL, DEXSCREENER_CHAIN_IDS, MORALIS_CHAIN_IDS, \
-    COINGECKO_CHAIN_IDS
+from feature_extraction_helpers.config import SERP_API_KEY, SERP_BASE_URL, DEXSCREENER_CHAIN_IDS, MORALIS_CHAIN_IDS, COINGECKO_CHAIN_IDS
 from feature_extraction_helpers.general_extraction_helpers import query_dexscreener, query_moralis, query_coingecko
 
 
@@ -32,7 +40,7 @@ def query_serpapi(search_term, date_range=None):
 
     data = response.json()
     if 'error' in data:
-        print(f"SerpApi error for '{search_term}': {data['error']}")
+        print(f"...SerpApi error for '{search_term}': {data['error']}")
         return None
 
     return data
@@ -48,7 +56,7 @@ def get_google_result_count(search_term, target_timestamp):
 
     total_results = data.get('search_information', {}).get('total_results')
     if total_results is None:
-        print(f"No total_results field for '{search_term}'")
+        print(f"...No total_results field for '{search_term}'")
         return None
 
     return int(total_results)
@@ -68,13 +76,12 @@ def get_midpoint_timestamp(trading_start_timestamp, window_end):
 # Extract token's website and X profile URL on DEXScreener
 # https://docs.dexscreener.com/api/reference#get-token-pairs-v1-chainid-tokenaddress
 def get_project_socials_dexscreener(chain, token_address):
-    print("Trying DEXScreener for socials resolution...")
+    print("...Trying DEXScreener for socials resolution...")
     dexscreener_chain = DEXSCREENER_CHAIN_IDS.get(chain)
     if dexscreener_chain is None:
         return None, None
 
     data = query_dexscreener(f"/token-pairs/v1/{dexscreener_chain}/{token_address}")
-    print(data)
     if data is None or not data:
         return None, None
 
@@ -100,7 +107,7 @@ def get_project_socials_dexscreener(chain, token_address):
 # Extract token's website and X profile URL via Moralis
 # Reference: https://docs.moralis.com/data-api/evm/token/metadata/token-metadata
 def get_project_socials_moralis(chain, token_address):
-    print("Trying Moralis for socials resolution...")
+    print("...Trying Moralis for socials resolution...")
     moralis_chain = MORALIS_CHAIN_IDS.get(chain)
     if moralis_chain is None:
         return None, None
@@ -117,7 +124,7 @@ def get_project_socials_moralis(chain, token_address):
 # Extract token's website and X profile URL via CoinGecko
 # Reference: https://docs.coingecko.com/reference/coins-contract-address
 def get_project_socials_coingecko(chain, token_address):
-    print("Trying CoinGecko for socials resolution...")
+    print("...Trying CoinGecko for socials resolution...")
     coingecko_chain = COINGECKO_CHAIN_IDS.get(chain)
     if coingecko_chain is None:
         return None, None
@@ -147,7 +154,7 @@ def get_project_socials(chain, token_address):
         if x_profile_url is None and resolved_x_profile:
             x_profile_url = resolved_x_profile
     if website_url is None and x_profile_url is None:
-        print(f"No socials resolved for {token_address} on {chain} from any source")
+        print(f"...No socials resolved for {token_address} on {chain} from any source")
 
     return website_url, x_profile_url
 
@@ -165,7 +172,7 @@ def normalize_x_handle(raw_value):
     raw_value = raw_value.strip().rstrip('/')
     match = X_HANDLE_PATTERN.match(raw_value)
     if not match:
-        print(f"Could not extract valid X handle from '{raw_value}'")
+        print(f"...Could not extract valid X handle from '{raw_value}'")
         return None
     return match.group(1) or match.group(2) or None
 
@@ -177,13 +184,13 @@ def normalize_x_handle(raw_value):
 def get_osint_features_live(chain, token_address, trading_start_timestamp, window_end):
     print("Google result counts are calculating...")
     website_url, x_profile_handle = get_project_socials(chain, token_address)
-    print("Querying SerpAPI...")
+    print("...Querying SerpAPI...")
     midpoint_timestamp = get_midpoint_timestamp(trading_start_timestamp, window_end)
     website_first_day = None
     if website_url:
         website_first_day = get_google_result_count(website_url, trading_start_timestamp)
     else:
-        print("No website URL available")
+        print("...No website URL available")
 
     x_profile_first_day = None
     x_profile_midpoint = None
@@ -194,7 +201,7 @@ def get_osint_features_live(chain, token_address, trading_start_timestamp, windo
         x_profile_first_day = get_google_result_count(first_day_search_term, trading_start_timestamp)
         x_profile_midpoint = get_google_result_count(midpoint_search_term, midpoint_timestamp)
     else:
-        print("No X profile URL available")
+        print("...No X profile URL available")
 
     return {
         'Google results for project website (first day)': website_first_day,

@@ -1,4 +1,14 @@
-# TODO: comments: general API queries + retrieving block info
+# Contains general helpers to extract features from different sources:
+# (1) general source-specific functions to construct relevant queries;
+# (2) general block-related functions to retrieve relevant blocks, their timestamps and other metadata;
+
+# Sources used:
+# - Etherscan
+# - MegaNode (NodeReal)
+# - CoinGecko
+# - CoinGeckoTerminal
+# - Moralis
+# - DEXScreener
 
 import time
 
@@ -6,8 +16,7 @@ import requests
 from datetime import datetime, timezone
 
 from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN_API_KEY, ETHERSCAN_CHAIN_IDS, \
-    ETHERSCAN_BASE_URL, \
-    NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS, COINGECKO_BASE_URL, COINGECKO_TIME_INTERVAL, \
+    ETHERSCAN_BASE_URL, NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS, COINGECKO_BASE_URL, COINGECKO_TIME_INTERVAL, \
     COINGECKO_API_KEY, GECKOTERMINAL_TIME_INTERVAL, GECKOTERMINAL_BASE_URL, MORALIS_TIME_INTERVAL, MORALIS_API_KEY, \
     MORALIS_BASE_URL, NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE, DEXSCREENER_BASE_URL
 
@@ -25,13 +34,13 @@ def query_etherscan(chain, params):
     response = requests.get(ETHERSCAN_BASE_URL, params=params, timeout=30)
 
     if response.status_code != 200:
-        print(f"HTTP error {response.status_code} for {params.get('action')}")
+        print(f"...HTTP error {response.status_code} for {params.get('action')}")
         return None
 
     data = response.json()
     if params.get('module') == 'proxy':
         if 'error' in data:
-            print(f"Proxy API error: {data['error']}")
+            print(f"...Proxy API error: {data['error']}")
             return None
         return data
 
@@ -39,7 +48,7 @@ def query_etherscan(chain, params):
         # A valid empty result, not an error, in holders count will be treated as 0 holders
         if data.get('message') in data_not_found_messages:
             return data
-        print(f"API error: {data.get('message')}: {data.get('result')}")
+        print(f"...API error: {data.get('message')}: {data.get('result')}")
         return None
 
     return data
@@ -52,14 +61,14 @@ def query_meganode(method, params):
     response = requests.post(MEGANODE_BSC_URL, json=payload, timeout=30)
 
     if response.status_code != 200:
-        print(f"HTTP error {response.status_code} for {method}")
+        print(f"...HTTP error {response.status_code} for {method}")
         return None
 
     data = response.json()
     if 'error' in data:
         if 'logs count exceeds the limit' in data['error'].get('message', ''):
             return 'LOG_LIMIT_EXCEEDED'
-        print(f"Error for {method}: {data['error']}")
+        print(f"...Error for {method}: {data['error']}")
         return None
 
     return data.get('result')
@@ -73,10 +82,10 @@ def query_coingecko(endpoint, params=None):
     response = requests.get(f"{COINGECKO_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
 
     if response.status_code == 404:
-        print(f"CoinGecko has no tracked coin for {endpoint}")
+        print(f"...CoinGecko has no tracked coin for {endpoint}")
         return None
     if response.status_code != 200:
-        print(f"HTTP error {response.status_code} for {endpoint}")
+        print(f"...HTTP error {response.status_code} for {endpoint}")
         return None
 
     return response.json()
@@ -90,7 +99,7 @@ def query_geckoterminal(endpoint, params=None):
     response = requests.get(f"{GECKOTERMINAL_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
 
     if response.status_code != 200:
-        print(f"HTTP error {response.status_code} for {endpoint}")
+        print(f"...HTTP error {response.status_code} for {endpoint}")
         print(response.json())
         return None
 
@@ -105,10 +114,10 @@ def query_moralis(endpoint, params=None):
     response = requests.get(f"{MORALIS_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
 
     if response.status_code == 404:
-        print(f"Moralis has no data for {endpoint}")
+        print(f"...Moralis has no data for {endpoint}")
         return None
     if response.status_code != 200:
-        print(f"HTTP error {response.status_code} for {endpoint}")
+        print(f"...HTTP error {response.status_code} for {endpoint}")
         print(response.json())
         return None
 
@@ -120,7 +129,7 @@ def query_moralis(endpoint, params=None):
 def query_dexscreener(endpoint):
     response = requests.get(f"{DEXSCREENER_BASE_URL}{endpoint}", timeout=30)
     if response.status_code != 200:
-        print(f"HTTP error {response.status_code} for DEXScreener endpoint {endpoint}")
+        print(f"...HTTP error {response.status_code} for DEXScreener endpoint {endpoint}")
         return None
     return response.json()
 
@@ -133,7 +142,7 @@ def get_deployment_block_and_timestamp(chain, token_address):
         # https://docs.etherscan.io/api-reference/endpoint/getcontractcreation
         data = query_etherscan(chain, {'module': 'contract', 'action': 'getcontractcreation', 'contractaddresses': token_address})
         if data is None or not data.get('result'):
-            print(f"Could not get data for {token_address}")
+            print(f"...Could not get data for {token_address}")
             return None, None
         result = data['result'][0]
 
@@ -146,7 +155,7 @@ def get_deployment_block_and_timestamp_bsc(token_address):
     payload = {'jsonrpc': '2.0', 'method': 'nr_getContractCreationTransaction', 'params': [token_address], 'id': 1}
     response = requests.post(MEGANODE_BSC_URL, json=payload, timeout=30)
     if response.status_code != 200:
-        print(f"HTTP error {response.status_code} for {token_address}")
+        print(f"...HTTP error {response.status_code} for {token_address}")
         return None, None
 
     result = response.json()
@@ -156,7 +165,7 @@ def get_deployment_block_and_timestamp_bsc(token_address):
 
     data = result.get("result")
     if data is None:
-        print(f"No deployment transaction found for {token_address}")
+        print(f"...No deployment transaction found for {token_address}")
         return None, None
 
     return data["blockNumber"], data["timestamp"]
@@ -220,7 +229,6 @@ def get_latest_block_with_timestamp(chain):
 # Binary search for Arbitrum tokens: search for block closest to to_timestamp
 def find_block_by_timestamp(chain, to_timestamp, low_block, high_block):
     closest_block = low_block
-
     while low_block <= high_block:
         mid_block = (low_block + high_block) // 2
         mid_timestamp = get_block_timestamp(chain, mid_block)

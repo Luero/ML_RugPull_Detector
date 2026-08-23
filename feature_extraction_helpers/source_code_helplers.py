@@ -1,4 +1,9 @@
-# TODO: general description
+# Contains constants and functions to retrieve code-based features. Used both for the dataset enrichment and for
+# live feature extraction pipeline.
+#
+# Code-based features are extracted based on regex patterns relevant for Solidity contract code, including OpenZeppelin library.
+# Source code for the dataset enrichment is retrieved from .txt files saved locally. Source code for a live pipeline is
+# obtained via Etherscan.
 
 
 import re
@@ -144,28 +149,28 @@ def has_lp_lock_reference(source_code):
 def get_contract_source_code(chain, token_address):
     data = query_etherscan(chain, {'module': 'contract', 'action': 'getsourcecode', 'address': token_address})
     if data is None or not data.get('result'):
-        print(f"Could not get source code for {token_address} on {chain}")
+        print(f"...Could not get source code for {token_address} on {chain}")
         return None
     result = data['result'][0]
     source_code = result.get('SourceCode')
     if not source_code:
-        print(f"Contract {token_address} on {chain} is not verified")
+        print(f"...Contract {token_address} on {chain} is not verified")
         return None
 
-    normalized_source_code = normalize_source_code(source_code)
-    return normalized_source_code
+    normalised_source_code = normalise_source_code(source_code)
+    return normalised_source_code
 
 
 # Flat source code from row response into a single string to apply regex patterns, if multiple files
 # If there is one file, return as plain Solidity source
-def normalize_source_code(source_code):
+def normalise_source_code(source_code):
     # Multy-file responses are wrapped in {{ }}
     if not (source_code.startswith('{{') and source_code.endswith('}}')):
         return source_code
     try:
         parsed = json.loads(source_code[1:-1])
     except json.JSONDecodeError as e:
-        print(f"Could not parse source code: {e}")
+        print(f"...Could not parse source code: {e}")
         return source_code
     sources = parsed.get('sources', {})
 
