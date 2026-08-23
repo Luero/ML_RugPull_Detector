@@ -4,7 +4,8 @@
 #
 # The script performs the following steps:
 # (1) finds the deployment block and obtains the block number
-# (2) converts each time window into a block offset using each chain's average block time (a necessary approximation explained in the Report)
+# (2) resolves block closest to each snapshot time via Etherscan's getblocknobytime for each chain except BSC; for BSC
+#     an approximation is used (chain's average block time based on BscScan info), since Etherscan's free plan does not cover BSC;
 # (3) extracts all transfer events between deployment and snapshot blocks (the last snapshot block is used to fetch logs only once and then use them from memory)
 # (4) replays transfers in order, maintains a running balance per address and takes a snapshot debit_from_addr(), credit_to_addr()
 # (5) counts addresses with positive remaining balances
@@ -16,7 +17,6 @@
 
 from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
 from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
-from feature_extraction_helpers.general_extraction_helpers import get_latest_block_eth
 
 
 # Time for snapshots in hours
@@ -38,14 +38,12 @@ def add_holder_snapshots_columns(sheet, headings):
     for i, h in enumerate(TIME_FOR_SNAPSHOTS_HOURS):
         sheet.cell(row=1, column=start_col + i, value=f"Holders_{h}h")
 
-    latest_arbitrum_block = get_latest_block_eth('ARBI')
-
     for row in sheet.iter_rows(min_row=2):
         token_address = row[address_col_idx].value
         chain = row[chain_col_idx].value
         if not token_address or not chain:
             continue
-        snapshots = get_holders_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS, latest_arbitrum_block)
+        snapshots = get_holders_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS)
         print(f"{token_address}: {snapshots}")
         for i, h in enumerate(TIME_FOR_SNAPSHOTS_HOURS):
             sheet.cell(row=row[0].row, column=start_col + i, value=snapshots.get(f"Holders_{h}h"))

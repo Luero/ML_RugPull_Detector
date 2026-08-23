@@ -37,11 +37,10 @@ def get_project_period_days(chain, token_address, deployment_block, deployment_t
 
 
 # Extract 'Holders_12h', 'Holders_24h' features
-def get_holders_count_snapshots(chain, token_address, time_for_snapshots_hour, deployment_block, deployment_timestamp, latest_block):
+def get_holders_count_snapshots(chain, token_address, time_for_snapshots_hour, deployment_block, deployment_timestamp):
     print("Holders count snapshots are calculating...")
-    latest_arbitrum_block = latest_block if chain == 'ARBI' else None
     # Time for snapshots in hours that are used by the model
-    snapshots = get_holders_snapshots(chain, token_address, time_for_snapshots_hour, latest_arbitrum_block, deployment_block, deployment_timestamp)
+    snapshots = get_holders_snapshots(chain, token_address, time_for_snapshots_hour, deployment_block, deployment_timestamp)
     return snapshots
 
 
@@ -155,7 +154,7 @@ def get_current_token_holder_count_bsc(token_address):
 
 def get_onchain_features_live(chain, token_address, deployment_block, deployment_timestamp, latest_block, latest_block_timestamp, last_activity_timestamp):
     project_period_days = get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp, last_activity_timestamp)
-    snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS, deployment_block, deployment_timestamp, latest_block)
+    snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS, deployment_block, deployment_timestamp)
     blockchain_type = get_blockchain_type(chain)
     number_of_transactions = get_number_of_transactions(chain, token_address, deployment_block, latest_block)
     current_token_holder_count = get_current_token_holder_count(chain, token_address)

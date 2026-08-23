@@ -91,25 +91,14 @@ MORALIS_TIME_INTERVAL = 0.15
 NETWORK_TO_BLOCKCHAIN_TYPE = {'ETH': 'POS', 'BSC': 'POSA', 'ARBI': 'Fraud Proofs', 'POLYGON': 'POS'}
 
 
-# For ETH: before September 2022 - 14.52 sec, after - 12.07 sec (mean calculated based on official Etherscan data: https://etherscan.io/chart/blocktime)
-# For BSC: before April 2025 - 3.01 sec (mean calculated based on official Bscscan data: https://bscscan.com/chart/blocktime)
-# For Polygon: before May 2026 - 2.17 sec (mean calculated based on official Polygonscan data: https://polygonscan.com/chart/blocktime)
-# For Arbitrum: no fixed block time, it depends on demand, thus, approximation could spoil results (https://docs.arbitrum.io/arbitrum-essentials/arbitrum-vs-ethereum/block-numbers-and-time)
-# Starting dates are not real chains' genesis dates, just a placeholder for 'very early date'
-BLOCK_TIME_PERIODS = {
-    'ETH': (
-        (datetime(2000, 7, 30, tzinfo=timezone.utc), datetime(2022, 9, 15, tzinfo=timezone.utc), 14.52),
-        (datetime(2022, 9, 15, tzinfo=timezone.utc), datetime(2100, 1, 1, tzinfo=timezone.utc), 12.07),
-    ),
+# Since BSC is not covered by Etherscan free plan, approximate block time periods are used:
+# before April 2025 - 3.01 sec, then reduced after forks (mean calculated based on official Bscscan data: https://bscscan.com/chart/blocktime)
+# Starting date is not real BSC genesis date, just a placeholder for 'very early date'
+BLOCK_TIME_PERIODS_BSC = {
     'BSC': (
         (datetime(2000, 4, 20, tzinfo=timezone.utc), datetime(2025, 4, 29, tzinfo=timezone.utc), 3.01),
         (datetime(2025, 4, 29, tzinfo=timezone.utc), datetime(2025, 6, 30, tzinfo=timezone.utc), 1.50),
         (datetime(2025, 6, 30, tzinfo=timezone.utc), datetime(2026, 1, 14, tzinfo=timezone.utc), 0.75),
         (datetime(2026, 1, 14, tzinfo=timezone.utc), datetime(2100, 1, 1, tzinfo=timezone.utc), 0.45),
-    ),
-    'POLYGON': (
-        (datetime(2000, 5, 30, tzinfo=timezone.utc), datetime(2026, 5, 5, tzinfo=timezone.utc), 2.17),
-        (datetime(2026, 5, 5, tzinfo=timezone.utc), datetime(2026, 6, 3, tzinfo=timezone.utc), 1.75),
-        (datetime(2026, 6, 3, tzinfo=timezone.utc), datetime(2100, 1, 1, tzinfo=timezone.utc), 1.50),
-    ),
+    )
 }

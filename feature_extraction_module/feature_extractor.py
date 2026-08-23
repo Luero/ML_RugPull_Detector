@@ -79,7 +79,7 @@ class FeatureExtractor:
 
 
 def main():
-    extractor = FeatureExtractor('BSC', '0x5108C0E857b30A8d191554134628fe0f1B7e78b4')
+    extractor = FeatureExtractor('ETH', '0x3cdb41027d61c413e064e84d9c21812b6ef004f1')
     features = extractor.extract_features()
     print(features)
 

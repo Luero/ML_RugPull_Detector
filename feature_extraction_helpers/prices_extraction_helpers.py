@@ -95,6 +95,9 @@ def get_top_pool_address(chain, token_address):
     top_pool = candidate_pools[0]
     top_reserve, top_pool_address, top_pool_created_at, top_token_side = top_pool[0], top_pool[1], top_pool[2], top_pool[3]
     pools_with_creation_date = [pool for pool in candidate_pools if pool[2] is not None]
+    if not pools_with_creation_date:
+        print(f"...No pool with a creation date found for {token_address} on {chain}")
+        return None, None, None, None, None
     earliest_pool = min(pools_with_creation_date, key=lambda item: item[2])
     earliest_reserve, earliest_pool_address, earliest_pool_created_at, earliest_token_side = earliest_pool
     print(f"...Selected pool {top_pool_address} with reserve ${top_reserve:,.0f} (token is {top_token_side}). "
@@ -219,7 +222,7 @@ def get_prices_moralis_pair(chain, pair_address, from_timestamp, to_timestamp):
 
         candles = data.get('result', [])
         for candle in candles:
-            all_prices.append((parse_moralis_timestamp(candle['timestamp']), candle['close']))
+            all_prices.append((parse_moralis_timestamp(candle['timestamp']), float(candle['close'])))
 
         cursor = data.get('cursor')
         if not cursor or not candles:

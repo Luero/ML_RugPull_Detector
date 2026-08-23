@@ -28,7 +28,7 @@ X_HANDLE_PATTERN = re.compile(r'(?:https?://)?(?:www\.)?(?:twitter\.com|x\.com)/
 # General function to query SerpApi's Google search engine
 # Reference: https://serpapi.com/search-api
 def query_serpapi(search_term, date_range=None):
-    params = {'engine': 'google', 'q': search_term, 'api_key': SERP_API_KEY}
+    params = {'q': search_term, 'api_key': SERP_API_KEY}
     if date_range is not None:
         cd_min, cd_max = date_range
         params['tbs'] = f"cdr:1,cd_min:{cd_min},cd_max:{cd_max}"

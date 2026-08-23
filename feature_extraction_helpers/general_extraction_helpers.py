@@ -16,7 +16,7 @@ import requests
 from datetime import datetime, timezone
 
 from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN_API_KEY, ETHERSCAN_CHAIN_IDS, \
-    ETHERSCAN_BASE_URL, NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS, COINGECKO_BASE_URL, COINGECKO_TIME_INTERVAL, \
+    ETHERSCAN_BASE_URL, NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS_BSC, COINGECKO_BASE_URL, COINGECKO_TIME_INTERVAL, \
     COINGECKO_API_KEY, GECKOTERMINAL_TIME_INTERVAL, GECKOTERMINAL_BASE_URL, MORALIS_TIME_INTERVAL, MORALIS_API_KEY, \
     MORALIS_BASE_URL, NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE, DEXSCREENER_BASE_URL
 
@@ -226,27 +226,19 @@ def get_latest_block_with_timestamp(chain):
     return latest_block, datetime.fromtimestamp(latest_block_timestamp, tz=timezone.utc)
 
 
-# Binary search for Arbitrum tokens: search for block closest to to_timestamp
-def find_block_by_timestamp(chain, to_timestamp, low_block, high_block):
-    closest_block = low_block
-    while low_block <= high_block:
-        mid_block = (low_block + high_block) // 2
-        mid_timestamp = get_block_timestamp(chain, mid_block)
-        if mid_timestamp is None:
-            break
-        if mid_timestamp <= to_timestamp:
-            closest_block = mid_block
-            low_block = mid_block + 1
-        else:
-            high_block = mid_block - 1
-
-    return closest_block
+# Get the number of block closest to a target timestamp.
+# Reference: https://docs.etherscan.io/api-reference/endpoint/getblocknobytime
+def get_block_number_by_timestamp(chain, target_timestamp):
+    data = query_etherscan(chain, {'module': 'block', 'action': 'getblocknobytime', 'timestamp': int(target_timestamp), 'closest': 'before'})
+    if data is None:
+        return None
+    return int(data['result'])
 
 
 # Extract block time for the token's deployment timestamp
 def get_block_time_seconds(chain, deployment_timestamp):
     deployment_datetime = datetime.fromtimestamp(int(deployment_timestamp), tz=timezone.utc)
-    for start, end, block_time in BLOCK_TIME_PERIODS[chain]:
+    for start, end, block_time in BLOCK_TIME_PERIODS_BSC[chain]:
         if start <= deployment_datetime < end:
             return block_time
     return None

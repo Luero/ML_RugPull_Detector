@@ -5,7 +5,7 @@ import math
 
 from feature_extraction_helpers.config import NODEREAL_BLOCK_RANGE_SIZE, ETH_LOG_RESULT_LIMIT, TRANSFER_EVENT_HASH
 from feature_extraction_helpers.general_extraction_helpers import query_etherscan, query_meganode, \
-    get_deployment_block_and_timestamp, find_block_by_timestamp, hours_to_blocks
+    get_deployment_block_and_timestamp, hours_to_blocks, get_block_number_by_timestamp
 
 
 # Extract all transfer event logs between from_block and to_block, chunked due to API limits
@@ -165,17 +165,21 @@ def count_holders_for_snapshots(logs, target_blocks):
 
 
 # Per-token snapshot extraction
-def get_holders_snapshots(chain, token_address, time_for_snapshot_hours, latest_arbitrum_block=None, deployment_block=None, deployment_timestamp=None):
+def get_holders_snapshots(chain, token_address, time_for_snapshot_hours, deployment_block=None, deployment_timestamp=None):
     if deployment_block is None:
         deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, token_address)
     if deployment_block is None:
         return {f"Holders_{h}h": math.nan for h in time_for_snapshot_hours}
 
-    if chain == 'ARBI':
+    if chain != 'BSC':
         # Blocks with timestamp closest to snapshots intervals
-        target_blocks = {h: find_block_by_timestamp(chain, deployment_timestamp + h * 3600, deployment_block, latest_arbitrum_block) for h in time_for_snapshot_hours}
+        target_blocks = {h: get_block_number_by_timestamp(chain, deployment_timestamp + h * 3600) for h in time_for_snapshot_hours}
+        # If any snapshot block could not be resolved, holder counts are treated as missing values
+        if any(block is None for block in target_blocks.values()):
+            print(f"...Could not resolve snapshot blocks for {token_address}")
+            return {f"Holders_{h}h": math.nan for h in time_for_snapshot_hours}
     else:
-        # Approximate number of blocks for each snapshot interval
+        # BSC is not covered by Etherscan free plan, so snapshot blocks are approximated via average block times
         block_offsets = {h: hours_to_blocks(chain, h, deployment_timestamp) for h in time_for_snapshot_hours}
         # Blocks calculated from deployment block + offset relevant for a particular chain
         target_blocks = {h: deployment_block + offset for h, offset in block_offsets.items() if offset is not None}
