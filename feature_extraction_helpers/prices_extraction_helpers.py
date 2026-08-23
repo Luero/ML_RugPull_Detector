@@ -14,7 +14,7 @@
 #     if it is within depth limit, query for prices;
 #     Reference: https://docs.coingecko.com/docs/keyless-public-api
 # (3) Moralis API: used as a secondary source, if GeckoTerminal hits its historical depth limit of 180 days. Moralis has less coverage
-#     (less chains and DEXes), but does not have a limit for historical requests, so it is useful when a long-living token is queried.
+#     (fewer chains and DEXes), but does not have a limit for historical requests, so it is useful when a long-living token is queried.
 
 
 import math
@@ -273,10 +273,8 @@ def try_geckoterminal_or_moralis(chain, token_address, window_end):
 # Extract 'MaxPrice (Quarter 1)', 'MaxPrice (Quarter 2)' for a live-queried token
 # Tries CoinGecko API first. If a queried token is not listed here (result is None)), tries either GeckoTerminal, or Moralis
 # depending on how old is a queried token
-def get_max_price_quarters_live(chain, token_address, deployment_timestamp, latest_block_timestamp, latest_block, deployment_block):
+def get_max_price_quarters_live(chain, token_address, deployment_timestamp, window_end):
     print("MaxPrice (Quarter 1)/(Quarter 2) are calculating...")
-    window_end = get_window_end_timestamp(chain, token_address, latest_block_timestamp, latest_block, deployment_block)
-
     prices = get_prices_coingecko(chain, token_address, deployment_timestamp, window_end)
     if prices is not None:
         result = compute_quarters(prices, deployment_timestamp, window_end, 'coingecko')
@@ -295,40 +293,3 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, late
     result['window_start'] = window_start
     return result
 
-
-def main():
-    address = '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1'
-    chain = 'ARBI'
-    deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, address)
-    latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
-    result = get_max_price_quarters_live(chain, address, deployment_timestamp, latest_block_timestamp, latest_block, deployment_block)
-    print(result['MaxPrice (Quarter 1)'], result['MaxPrice (Quarter 2)'], result['price_source'])
-
-
-if __name__ == "__main__":
-    main()
-
-
-
-# For testing:
-# Geckoterminal, success
-#     address = '0x100acD9FcD8E0FF80A6595B66fdABe93184Aa100'
-#     chain = 'ETH'
-#     address = '0xB91025710Adbc140a9fEe4b3E465545a2bF53E20'
-#     chain = 'POLYGON'
-# CoinGecko has token listed, but does not have price history for required periods (nans for Q1/Q2), fall back to terminal, success
-#     address = '0x3cdb41027d61c413e064e84d9c21812b6ef004f1'
-#     chain = 'ETH'
-# Top pool does not reach window start, use the earliest pool (GeckoTerminal)
-#     address = '0x951f086a127e280724fd93ccc543f65065afeb5e'
-#     chain = 'ETH'
-
-# 401 for CoinGecko (too deep), fethes proces from Moralis
-#     address = '0xb0897686c545045aFc77CF20eC7A532E3120E0F1'
-#     chain = 'POLYGON'
-
-# No data in any source:
-    # address = '0x0c29891dc5060618c779e2a45fbe4808aa5ae6ad'
-    # chain = 'ARBI'
-
-# 'ARBI', '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1' - GNO

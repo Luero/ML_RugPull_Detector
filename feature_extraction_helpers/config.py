@@ -108,8 +108,7 @@ BLOCK_TIME_PERIODS = {
     ),
     'POLYGON': (
         (datetime(2000, 5, 30, tzinfo=timezone.utc), datetime(2026, 5, 5, tzinfo=timezone.utc), 2.17),
-        (datetime(2025, 10, 8, tzinfo=timezone.utc), datetime(2026, 5, 6, tzinfo=timezone.utc), 2.00),
-        (datetime(2026, 5, 6, tzinfo=timezone.utc), datetime(2026, 6, 3, tzinfo=timezone.utc), 1.75),
+        (datetime(2026, 5, 5, tzinfo=timezone.utc), datetime(2026, 6, 3, tzinfo=timezone.utc), 1.75),
         (datetime(2026, 6, 3, tzinfo=timezone.utc), datetime(2100, 1, 1, tzinfo=timezone.utc), 1.50),
     ),
 }

@@ -160,10 +160,7 @@ def get_current_token_holder_count_bsc(token_address):
     return int(total_holders)
 
 
-def get_onchain_features_live(chain, token_address):
-    # Used as 'now' point at time for  extracts values at the time of query and reuses them for all features to get them consistent in time
-    latest_block, latest_block_timestamp = get_latest_block_with_timestamp(chain)
-    deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, token_address)
+def get_onchain_features_live(chain, token_address, deployment_block, deployment_timestamp, latest_block, latest_block_timestamp, last_activity_timestamp):
     project_period_days = get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp, latest_block)
     snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS)
     blockchain_type = get_blockchain_type(chain)

@@ -1,9 +1,8 @@
-# TODO: comment
+# TODO: general comment
 import re
 
 import requests
 from datetime import datetime, timezone
-import time
 
 from feature_extraction_helpers.config import SERP_API_KEY, SERP_BASE_URL, DEXSCREENER_CHAIN_IDS, MORALIS_CHAIN_IDS, \
     COINGECKO_CHAIN_IDS
@@ -92,8 +91,6 @@ def get_project_socials_dexscreener(chain, token_address):
             match = next((s.get('handle') for s in socials if s.get('platform') in ('twitter', 'x')), None)
             if match:
                 x_profile_handle = normalize_x_handle(match)
-                # TODO: delete later
-                print(x_profile_handle)
         if website_url and x_profile_handle:
             break
 
@@ -113,8 +110,6 @@ def get_project_socials_moralis(chain, token_address):
     links = data[0].get('links', {}) if isinstance(data, list) else data.get('links', {})
     website_url = links.get('website') or None
     x_profile_handle = normalize_x_handle(links.get('twitter'))
-    # TODO: delete later
-    print(x_profile_handle)
 
     return website_url, x_profile_handle
 
@@ -134,8 +129,6 @@ def get_project_socials_coingecko(chain, token_address):
     homepages = links.get('homepage', [])
     website_url = next((url for url in homepages if url), None)
     x_profile_handle = normalize_x_handle(links.get('twitter_screen_name'))
-    # TODO: delete later
-    print(x_profile_handle)
 
     return website_url, x_profile_handle
 
@@ -208,25 +201,3 @@ def get_osint_features_live(chain, token_address, trading_start_timestamp, windo
         'Google results for project x profile (first days)': x_profile_first_day,
         'Google results for project x profile (duration/2)': x_profile_midpoint
     }
-
-
-# TODO: use window_start from get_max_price_quarters_live when aggregating into one module
-def main():
-    chain, token_address = 'ETH', '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984'
-    print(chain, token_address)
-    trading_start_timestamp = int(datetime(2024, 4, 17, tzinfo=timezone.utc).timestamp())
-    window_end = int(time.time())
-
-    result = get_osint_features_live(chain, token_address, trading_start_timestamp, window_end)
-    print(result)
-
-
-if __name__ == "__main__":
-    main()
-
-
-# For tests:
-# chain, token_address = 'BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00' - PEPE
-# 'ARBI', '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1' - GNO, big one
-# 'POLYGON', '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC' - small and recent - None, no socials found
-# 'ETH', '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984' - Uniswap, big and old
