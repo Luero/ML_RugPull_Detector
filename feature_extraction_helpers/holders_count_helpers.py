@@ -12,14 +12,11 @@ from feature_extraction_helpers.general_extraction_helpers import query_ethersca
 def get_transfer_logs(chain, token_address, from_block, to_block):
     all_logs = []
     had_failure = False
-
     if from_block > to_block:
         print(f"...From_block ({from_block}) > to_block ({to_block})")
         return [], had_failure
-
     if chain != 'BSC':
         return get_transfer_logs_etherscan(chain, token_address, from_block, to_block)
-
     current_block = from_block
     while current_block <= to_block:
         chunk_end = min(current_block + NODEREAL_BLOCK_RANGE_SIZE, to_block)
@@ -27,7 +24,6 @@ def get_transfer_logs(chain, token_address, from_block, to_block):
         all_logs.extend(chunk_logs)
         had_failure = had_failure or chunk_failed
         current_block = chunk_end + 1
-
     return all_logs, had_failure
 
 
@@ -46,7 +42,6 @@ def get_transfer_logs_etherscan(chain, token_address, from_block, to_block):
             left_logs, left_failure = get_transfer_logs_etherscan(chain, token_address, from_block, mid_block)
             right_logs, right_failure = get_transfer_logs_etherscan(chain, token_address, mid_block + 1, to_block)
             return left_logs + right_logs, left_failure or right_failure
-
         data = query_etherscan(chain, {
             'module': 'logs', 'action': 'getLogs',
             'address': token_address, 'topic0': TRANSFER_EVENT_HASH,
@@ -60,7 +55,6 @@ def get_transfer_logs_etherscan(chain, token_address, from_block, to_block):
         if len(page_logs) < ETH_LOG_RESULT_LIMIT:
             break
         page += 1
-
     return chunk_logs, False
 
 
@@ -75,7 +69,6 @@ def get_transfer_logs_bsc(token_address, from_block, to_block):
         'fromBlock': hex(from_block),
         'toBlock': hex(to_block)
     }])
-
     if result is None:
         return [], True
     # Handles situation when number of logs returned exceeds API limit (50000)
@@ -87,7 +80,6 @@ def get_transfer_logs_bsc(token_address, from_block, to_block):
         left_logs, left_failure = get_transfer_logs_bsc(token_address, from_block, mid_block)
         right_logs, right_failure = get_transfer_logs_bsc(token_address, mid_block + 1, to_block)
         return left_logs + right_logs, left_failure or right_failure
-
     return result, False
 
 
@@ -136,7 +128,6 @@ def count_holders_for_snapshots(logs, target_blocks):
     sorted_target_blocks = sorted(target_blocks.items(), key=lambda x: x[1])
     # Snapshot to look next
     current_target = 0
-
     # Replays all logs and stores snapshots on relevant time windows
     for log in logs:
         current_block = get_block_number_from_log(log)
@@ -145,7 +136,6 @@ def count_holders_for_snapshots(logs, target_blocks):
             snapshot_hours = sorted_target_blocks[current_target][0]
             snapshots[f"Holders_{snapshot_hours}h"] = sum(1 for balance in balances.values() if balance > 0)
             current_target += 1
-
         from_address = get_address_from_topic(log['topics'][1])
         to_address = get_address_from_topic(log['topics'][2])
         value = get_transfer_value_from_log(log)
@@ -154,13 +144,11 @@ def count_holders_for_snapshots(logs, target_blocks):
             return None
         debit_from_address(balances, from_address, value)
         credit_to_address(balances, to_address, value)
-
     # Create snapshots if there were no more transfers before next target snapshot
     while current_target < len(sorted_target_blocks):
         snapshot_hours = sorted_target_blocks[current_target][0]
         snapshots[f"Holders_{snapshot_hours}h"] = sum(1 for balance in balances.values() if balance > 0)
         current_target += 1
-
     return snapshots
 
 
@@ -170,7 +158,6 @@ def get_holders_snapshots(chain, token_address, time_for_snapshot_hours, deploym
         deployment_block, deployment_timestamp = get_deployment_block_and_timestamp(chain, token_address)
     if deployment_block is None:
         return {f"Holders_{h}h": math.nan for h in time_for_snapshot_hours}
-
     if chain != 'BSC':
         # Blocks with timestamp closest to snapshots intervals
         target_blocks = {h: get_block_number_by_timestamp(chain, deployment_timestamp + h * 3600) for h in time_for_snapshot_hours}
@@ -183,7 +170,6 @@ def get_holders_snapshots(chain, token_address, time_for_snapshot_hours, deploym
         block_offsets = {h: hours_to_blocks(chain, h, deployment_timestamp) for h in time_for_snapshot_hours}
         # Blocks calculated from deployment block + offset relevant for a particular chain
         target_blocks = {h: deployment_block + offset for h, offset in block_offsets.items() if offset is not None}
-
     # Upper boundary for getting and replaying logs
     max_block = max(target_blocks.values())
     logs, had_failure = get_transfer_logs(chain, token_address, int(deployment_block), max_block)
@@ -195,5 +181,4 @@ def get_holders_snapshots(chain, token_address, time_for_snapshot_hours, deploym
     # If transfer value cannot be extracted from logs, holder counts for this token will be treated as missing value in dataset
     if snapshots is None:
         return {f'Holders_{h}h': math.nan for h in time_for_snapshot_hours}
-
     return snapshots

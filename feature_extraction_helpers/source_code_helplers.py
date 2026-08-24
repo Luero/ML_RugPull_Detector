@@ -156,7 +156,6 @@ def get_contract_source_code(chain, token_address):
     if not source_code:
         print(f"...Contract {token_address} on {chain} is not verified")
         return None
-
     normalised_source_code = normalise_source_code(source_code)
     return normalised_source_code
 
@@ -173,7 +172,6 @@ def normalise_source_code(source_code):
         print(f"...Could not parse source code: {e}")
         return source_code
     sources = parsed.get('sources', {})
-
     return '\n'.join(file_data.get('content', '') for file_data in sources.values())
 
 
@@ -184,7 +182,6 @@ def get_source_code_features_live(chain, token_address):
     source_code = get_contract_source_code(chain, token_address)
     if source_code is None:
         return {'has_contract_swap_patterns': math.nan, 'has_owner_guard': math.nan}
-
     return {
         'has_contract_swap_patterns': int(has_contract_swap_patterns(source_code)),
         'has_owner_guard': int(has_owner_guard(source_code)),

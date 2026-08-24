@@ -10,12 +10,11 @@
 
 import re
 
-import requests
 from datetime import datetime, timezone
 
 from feature_extraction_helpers.config import SERP_API_KEY, SERP_BASE_URL, DEXSCREENER_CHAIN_IDS, MORALIS_CHAIN_IDS, COINGECKO_CHAIN_IDS
-from feature_extraction_helpers.general_extraction_helpers import query_dexscreener, query_moralis, query_coingecko
-
+from feature_extraction_helpers.general_extraction_helpers import query_dexscreener, query_moralis, query_coingecko, \
+    SESSION
 
 # Reference: https://www.snapper.studio/blog/twitter-rebrands
 X_REBRAND_TIMESTAMP = int(datetime(2023, 6, 24, tzinfo=timezone.utc).timestamp())
@@ -32,17 +31,14 @@ def query_serpapi(search_term, date_range=None):
     if date_range is not None:
         cd_min, cd_max = date_range
         params['tbs'] = f"cdr:1,cd_min:{cd_min},cd_max:{cd_max}"
-
-    response = requests.get(SERP_BASE_URL, params=params, timeout=30)
+    response = SESSION.get(SERP_BASE_URL, params=params, timeout=30)
     if response.status_code != 200:
         print(f"HTTP error {response.status_code} for SerpApi query '{search_term}'")
         return None
-
     data = response.json()
     if 'error' in data:
         print(f"...SerpApi error for '{search_term}': {data['error']}")
         return None
-
     return data
 
 
@@ -50,15 +46,12 @@ def query_serpapi(search_term, date_range=None):
 def get_google_result_count(search_term, target_timestamp):
     target_date = convert_cdr_date(target_timestamp)
     data = query_serpapi(search_term, date_range=(target_date, target_date))
-
     if data is None:
         return None
-
     total_results = data.get('search_information', {}).get('total_results')
     if total_results is None:
         print(f"...No total_results field for '{search_term}'")
         return None
-
     return int(total_results)
 
 
@@ -80,11 +73,9 @@ def get_project_socials_dexscreener(chain, token_address):
     dexscreener_chain = DEXSCREENER_CHAIN_IDS.get(chain)
     if dexscreener_chain is None:
         return None, None
-
     data = query_dexscreener(f"/token-pairs/v1/{dexscreener_chain}/{token_address}")
     if data is None or not data:
         return None, None
-
     website_url = None
     x_profile_handle = None
     for pair in data:
@@ -100,7 +91,6 @@ def get_project_socials_dexscreener(chain, token_address):
                 x_profile_handle = normalize_x_handle(match)
         if website_url and x_profile_handle:
             break
-
     return website_url, x_profile_handle
 
 
@@ -117,7 +107,6 @@ def get_project_socials_moralis(chain, token_address):
     links = data[0].get('links', {}) if isinstance(data, list) else data.get('links', {})
     website_url = links.get('website') or None
     x_profile_handle = normalize_x_handle(links.get('twitter'))
-
     return website_url, x_profile_handle
 
 
@@ -131,12 +120,10 @@ def get_project_socials_coingecko(chain, token_address):
     data = query_coingecko(f"/coins/{coingecko_chain}/contract/{token_address}")
     if data is None:
         return None, None
-
     links = data.get('links', {})
     homepages = links.get('homepage', [])
     website_url = next((url for url in homepages if url), None)
     x_profile_handle = normalize_x_handle(links.get('twitter_screen_name'))
-
     return website_url, x_profile_handle
 
 
@@ -155,7 +142,6 @@ def get_project_socials(chain, token_address):
             x_profile_url = resolved_x_profile
     if website_url is None and x_profile_url is None:
         print(f"...No socials resolved for {token_address} on {chain} from any source")
-
     return website_url, x_profile_url
 
 
@@ -191,7 +177,6 @@ def get_osint_features_live(chain, token_address, trading_start_timestamp, windo
         website_first_day = get_google_result_count(website_url, trading_start_timestamp)
     else:
         print("...No website URL available")
-
     x_profile_first_day = None
     x_profile_midpoint = None
     if x_profile_handle:
@@ -202,7 +187,6 @@ def get_osint_features_live(chain, token_address, trading_start_timestamp, windo
         x_profile_midpoint = get_google_result_count(midpoint_search_term, midpoint_timestamp)
     else:
         print("...No X profile URL available")
-
     return {
         'Google results for project website (first day)': website_first_day,
         'Google results for project x profile (first days)': x_profile_first_day,

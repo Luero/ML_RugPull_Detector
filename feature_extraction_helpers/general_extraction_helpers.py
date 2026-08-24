@@ -23,96 +23,100 @@ from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN
 # Based on TM-RugPull methodology
 LIVE_THRESHOLD_HOURS = 72
 
+# One shared HTTP session to make API calls more efficient
+SESSION = requests.Session()
+
+# Timestamps of last call per provider, to sleep only the remaining part
+LAST_CALL_TIMES = {}
+
+
+# Ensure minimal interval between calls to one provider, count time spent since previous call
+def wait_for_rate_limit(provider, time_interval):
+    last_call_time = LAST_CALL_TIMES.get(provider)
+    if last_call_time is not None:
+        elapsed = time.monotonic() - last_call_time
+        if elapsed < time_interval:
+            time.sleep(time_interval - elapsed)
+    LAST_CALL_TIMES[provider] = time.monotonic()
+
 
 # General function to query Etherscan's endpoints
 def query_etherscan(chain, params):
-    time.sleep(ETHERSCAN_TIME_INTERVAL)
+    wait_for_rate_limit('etherscan', ETHERSCAN_TIME_INTERVAL)
     data_not_found_messages = {'No records found', 'No data found', 'No transactions found'}
     params = params.copy()
     params['apikey'] = ETHERSCAN_API_KEY
     params['chainid'] = ETHERSCAN_CHAIN_IDS[chain]
-    response = requests.get(ETHERSCAN_BASE_URL, params=params, timeout=30)
-
+    response = SESSION.get(ETHERSCAN_BASE_URL, params=params, timeout=30)
     if response.status_code != 200:
         print(f"...HTTP error {response.status_code} for {params.get('action')}")
         return None
-
     data = response.json()
     if params.get('module') == 'proxy':
         if 'error' in data:
             print(f"...Proxy API error: {data['error']}")
             return None
         return data
-
     if data.get('status') not in ('1', 1):
         # A valid empty result, not an error, in holders count will be treated as 0 holders
         if data.get('message') in data_not_found_messages:
             return data
         print(f"...API error: {data.get('message')}: {data.get('result')}")
         return None
-
     return data
 
 
 # General function to query MegaNode endpoints
 def query_meganode(method, params):
-    time.sleep(NODEREAL_TIME_INTERVAL)
+    wait_for_rate_limit('nodereal', NODEREAL_TIME_INTERVAL)
     payload = {'jsonrpc': '2.0', 'method': method, 'params': params, 'id': 1}
-    response = requests.post(MEGANODE_BSC_URL, json=payload, timeout=30)
-
+    response = SESSION.post(MEGANODE_BSC_URL, json=payload, timeout=30)
     if response.status_code != 200:
         print(f"...HTTP error {response.status_code} for {method}")
         return None
-
     data = response.json()
     if 'error' in data:
         if 'logs count exceeds the limit' in data['error'].get('message', ''):
             return 'LOG_LIMIT_EXCEEDED'
         print(f"...Error for {method}: {data['error']}")
         return None
-
     return data.get('result')
 
 
 # General function to query CoinGecko's public endpoints
 # Reference: https://docs.coingecko.com/docs/keyless-public-api
 def query_coingecko(endpoint, params=None):
-    time.sleep(COINGECKO_TIME_INTERVAL)
+    wait_for_rate_limit('coingecko', COINGECKO_TIME_INTERVAL)
     headers = {'x-cg-demo-api-key': COINGECKO_API_KEY}
-    response = requests.get(f"{COINGECKO_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
-
+    response = SESSION.get(f"{COINGECKO_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
     if response.status_code == 404:
         print(f"...CoinGecko has no tracked coin for {endpoint}")
         return None
     if response.status_code != 200:
         print(f"...HTTP error {response.status_code} for {endpoint}")
         return None
-
     return response.json()
 
 
 # General function to query GeckoTerminal's public endpoints
 # Reference: https://docs.coingecko.com/docs/keyless-public-api
 def query_geckoterminal(endpoint, params=None):
-    time.sleep(GECKOTERMINAL_TIME_INTERVAL)
+    wait_for_rate_limit('geckoterminal', GECKOTERMINAL_TIME_INTERVAL)
     headers = {'x-cg-demo-api-key': COINGECKO_API_KEY}
-    response = requests.get(f"{GECKOTERMINAL_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
-
+    response = SESSION.get(f"{GECKOTERMINAL_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
     if response.status_code != 200:
         print(f"...HTTP error {response.status_code} for {endpoint}")
         print(response.json())
         return None
-
     return response.json()
 
 
 # General function to query Moralis's endpoints
 # https://docs.moralis.com/data-api/evm/token/overview
 def query_moralis(endpoint, params=None):
-    time.sleep(MORALIS_TIME_INTERVAL)
+    wait_for_rate_limit('moralis', MORALIS_TIME_INTERVAL)
     headers = {'X-API-Key': MORALIS_API_KEY}
-    response = requests.get(f"{MORALIS_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
-
+    response = SESSION.get(f"{MORALIS_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
     if response.status_code == 404:
         print(f"...Moralis has no data for {endpoint}")
         return None
@@ -120,14 +124,13 @@ def query_moralis(endpoint, params=None):
         print(f"...HTTP error {response.status_code} for {endpoint}")
         print(response.json())
         return None
-
     return response.json()
 
 
 # General function to query DEXScreener's public endpoints
 # Reference: https://docs.dexscreener.com/api/reference
 def query_dexscreener(endpoint):
-    response = requests.get(f"{DEXSCREENER_BASE_URL}{endpoint}", timeout=30)
+    response = SESSION.get(f"{DEXSCREENER_BASE_URL}{endpoint}", timeout=30)
     if response.status_code != 200:
         print(f"...HTTP error {response.status_code} for DEXScreener endpoint {endpoint}")
         return None
@@ -145,29 +148,26 @@ def get_deployment_block_and_timestamp(chain, token_address):
             print(f"...Could not get data for {token_address}")
             return None, None
         result = data['result'][0]
-
         return int(result['blockNumber']), int(result['timestamp'])
 
 
 # Obtain deployment block using token contract address for BSC tokens
 # https://docs.nodereal.io/reference/nr_getcontractcreationtransaction
 def get_deployment_block_and_timestamp_bsc(token_address):
+    wait_for_rate_limit('nodereal', NODEREAL_TIME_INTERVAL)
     payload = {'jsonrpc': '2.0', 'method': 'nr_getContractCreationTransaction', 'params': [token_address], 'id': 1}
-    response = requests.post(MEGANODE_BSC_URL, json=payload, timeout=30)
+    response = SESSION.post(MEGANODE_BSC_URL, json=payload, timeout=30)
     if response.status_code != 200:
         print(f"...HTTP error {response.status_code} for {token_address}")
         return None, None
-
     result = response.json()
     if "error" in result:
         print(result["error"])
         return None, None
-
     data = result.get("result")
     if data is None:
         print(f"...No deployment transaction found for {token_address}")
         return None, None
-
     return data["blockNumber"], data["timestamp"]
 
 
@@ -289,7 +289,6 @@ def get_last_activity_timestamp_bsc(token_address, latest_block, deployment_bloc
         if from_block == deployment_block:
             break
         to_block = from_block - 1
-
     return None
 
 

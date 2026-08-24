@@ -57,7 +57,6 @@ f"/coins/{blockchain}/contract/{token_address}/market_chart/range",
     )
     if data is None or not data.get('prices'):
         return None
-
     print(f"...CoinGecko path succeeded for {token_address} on {blockchain}")
     # CoinGecko timestamps are in milliseconds, normalizing required to match CoinGeckoTerminal
     return [(timestamp_ms / 1000, price) for timestamp_ms, price in data['prices']]
@@ -75,7 +74,6 @@ def get_top_pool_address(chain, token_address):
     if data is None or not data.get('data'):
         print(f"...No pools found for {token_address} on {chain}")
         return None, None, None, None, None
-
     candidate_pools = []
     for pool in data['data']:
         base_token_id = pool.get('relationships', {}).get('base_token', {}).get('data', {}).get('id', '')
@@ -87,7 +85,6 @@ def get_top_pool_address(chain, token_address):
         # To ensure the price is in USD (as per docs for the base token)
         token_side = 'base' if token_address.lower() in base_token_id.lower() else 'quote'
         candidate_pools.append((reserve_in_usd, pool['attributes']['address'], pool_created_at, token_side))
-
     if not candidate_pools:
         return None, None, None, None, None
 
@@ -139,7 +136,7 @@ def get_ohlcv_history(chain, pool_address, from_timestamp, to_timestamp, token_s
         data = query_geckoterminal(
             f"/networks/{network}/pools/{pool_address}/ohlcv/{timeframe}",
             params={'aggregate': aggregate, 'before_timestamp': cursor_timestamp, 'limit': 1000,
-                    'currency': 'usd', 'token': token_side},  # NEW: 'token' param
+                    'currency': 'usd', 'token': token_side},
         )
         if data is None:
             return all_candles, True
@@ -184,11 +181,9 @@ def compute_quarters(prices, window_start, window_end, price_source):
     quarter_length_seconds = (window_end - window_start) / 4
     if quarter_length_seconds <= 0:
         return {'MaxPrice (Quarter 1)': math.nan, 'MaxPrice (Quarter 2)': math.nan, 'price_source': price_source}
-
     q1_start = window_start
     q1_end = window_start + quarter_length_seconds
     q2_end = window_start + 2 * quarter_length_seconds
-
     return {
         'MaxPrice (Quarter 1)': get_max_price_in_range(prices, q1_start, q1_end),
         'MaxPrice (Quarter 2)': get_max_price_in_range(prices, q1_end, q2_end),
@@ -207,7 +202,6 @@ def get_prices_moralis_pair(chain, pair_address, from_timestamp, to_timestamp):
     moralis_chain = MORALIS_CHAIN_IDS.get(chain)
     timeframe = choose_moralis_timeframe(to_timestamp - from_timestamp)
     print(f"...Fetching {timeframe} candles for pair {pair_address} via Moralis")
-
     all_prices = []
     cursor = None
     while True:
@@ -223,11 +217,9 @@ def get_prices_moralis_pair(chain, pair_address, from_timestamp, to_timestamp):
         candles = data.get('result', [])
         for candle in candles:
             all_prices.append((parse_moralis_timestamp(candle['timestamp']), float(candle['close'])))
-
         cursor = data.get('cursor')
         if not cursor or not candles:
             break
-
     return all_prices, False
 
 
@@ -288,7 +280,6 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, wind
     window_start, prices, price_source = try_geckoterminal_or_moralis(chain, token_address, window_end)
     if prices is None:
         return {'MaxPrice (Quarter 1)': math.nan, 'MaxPrice (Quarter 2)': math.nan, 'price_source': None, 'window_start': None}
-
     result = compute_quarters(prices, window_start, window_end, price_source)
     result['window_start'] = window_start
     return result

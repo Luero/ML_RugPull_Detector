@@ -10,7 +10,7 @@ import time
 
 from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS, \
     NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE
-from feature_extraction_helpers.general_extraction_helpers import is_token_live, query_moralis, query_meganode
+from feature_extraction_helpers.general_extraction_helpers import is_token_live, query_moralis, query_meganode, SESSION
 from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
 
 
@@ -32,7 +32,6 @@ def get_project_period_days(chain, token_address, deployment_block, deployment_t
     else:
         # No activity ever
         return None
-
     return (end_date - start_date).days
 
 
@@ -59,7 +58,7 @@ def get_token_counters(chain, token_address):
         return None
     for attempt in range(1, BLOCKSCOUT_MAX_RETRIES + 1):
         try:
-            response = requests.get(f"{base_url}/api/v2/tokens/{token_address}/counters", timeout=30)
+            response = SESSION.get(f"{base_url}/api/v2/tokens/{token_address}/counters", timeout=30)
         except requests.RequestException as e:
             print(f"...Request error for {token_address} (attempt {attempt}/{BLOCKSCOUT_MAX_RETRIES}): {e}")
             if attempt < BLOCKSCOUT_MAX_RETRIES:
@@ -71,7 +70,6 @@ def get_token_counters(chain, token_address):
         print(f"...HTTP {response.status_code} for {token_address} (attempt {attempt}/{BLOCKSCOUT_MAX_RETRIES}): {response.text}")
         if attempt < BLOCKSCOUT_MAX_RETRIES:
             time.sleep(BLOCKSCOUT_RETRY_DELAY_SECONDS)
-
     return None
 
 
@@ -89,7 +87,6 @@ def get_number_of_transactions(chain, token_address, deployment_block, latest_bl
     if transfers_count is None:
         print(f"...No transfers_count field for {token_address}")
         return None
-
     return int(transfers_count)
 
 
@@ -113,7 +110,6 @@ def get_number_of_transactions_bsc(token_address, deployment_block, latest_block
             return None
         total_transfers += int(result, 16)
         from_block = to_block + 1
-
     return total_transfers
 
 
@@ -130,14 +126,11 @@ def get_current_token_holder_count(chain, token_address):
     if holders_count is None:
         print(f"...No token_holders_count field for {token_address}")
         return None
-
     return int(holders_count)
 
 
 # Extract token holder count ('Number of holders') at the time of query for BSC tokens, uses Moralis free API with indexed number
 # Reference: https://docs.moralis.com/data-api/evm/token/holders/token-holder-stats
-# TODO: try to find frequency of indexing
-# TODO: maybe use for Arbitrum, too (strange results from Blockscout)
 def get_current_token_holder_count_bsc(token_address):
     moralis_chain = MORALIS_CHAIN_IDS.get('BSC')
     data = query_moralis(f"/erc20/{token_address}/holders", {"chain": moralis_chain})
@@ -148,7 +141,6 @@ def get_current_token_holder_count_bsc(token_address):
     if total_holders is None:
         print(f"...No totalHolders field for {token_address}")
         return None
-
     return int(total_holders)
 
 
@@ -158,7 +150,6 @@ def get_onchain_features_live(chain, token_address, deployment_block, deployment
     blockchain_type = get_blockchain_type(chain)
     number_of_transactions = get_number_of_transactions(chain, token_address, deployment_block, latest_block)
     current_token_holder_count = get_current_token_holder_count(chain, token_address)
-
     features = {
         'project period (days)': project_period_days,
         'the number of Transactions': number_of_transactions,
@@ -166,5 +157,4 @@ def get_onchain_features_live(chain, token_address, deployment_block, deployment
         'Blockchain Type': blockchain_type,
     }
     features.update(snapshots)
-
     return features
