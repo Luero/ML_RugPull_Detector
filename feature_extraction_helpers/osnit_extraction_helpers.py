@@ -43,6 +43,7 @@ def query_serpapi(search_term, date_range=None):
 
 
 # Get Google's total results for a search term for a particular date
+# Successful search with no results returns 0 ((consistent with TM-RugPull methodology), failed request returns None
 def get_google_result_count(search_term, target_timestamp):
     target_date = convert_cdr_date(target_timestamp)
     data = query_serpapi(search_term, date_range=(target_date, target_date))
@@ -50,8 +51,8 @@ def get_google_result_count(search_term, target_timestamp):
         return None
     total_results = data.get('search_information', {}).get('total_results')
     if total_results is None:
-        print(f"...No total_results field for '{search_term}'")
-        return None
+        print(f"...Zero Google results for '{search_term}'")
+        return 0
     return int(total_results)
 
 

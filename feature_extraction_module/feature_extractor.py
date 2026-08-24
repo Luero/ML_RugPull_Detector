@@ -12,7 +12,7 @@ from feature_extraction_helpers.osnit_extraction_helpers import get_osint_featur
 from feature_extraction_helpers.general_extraction_helpers import get_latest_block_with_timestamp, \
     get_deployment_block_and_timestamp, get_last_activity_timestamp
 
-
+# TODO: add validation for a contract address
 # Call all extraction scripts for a single query using chain and token address
 class FeatureExtractor:
     def __init__(self, chain, token_address):

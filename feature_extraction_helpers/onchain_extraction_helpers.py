@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 import requests
 import time
+import math
 
 from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS, \
     NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE
@@ -36,10 +37,17 @@ def get_project_period_days(chain, token_address, deployment_block, deployment_t
 
 
 # Extract 'Holders_12h', 'Holders_24h' features
-def get_holders_count_snapshots(chain, token_address, time_for_snapshots_hour, deployment_block, deployment_timestamp):
+def get_holders_count_snapshots(chain, token_address, time_for_snapshots_hour, deployment_block, deployment_timestamp, latest_block_timestamp):
     print("Holders count snapshots are calculating...")
+    # Checks that a token is not younger than a snapshot window
+    elapsed_hours = (latest_block_timestamp - datetime.fromtimestamp(deployment_timestamp, tz=timezone.utc)).total_seconds() / 3600
     # Time for snapshots in hours that are used by the model
-    snapshots = get_holders_snapshots(chain, token_address, time_for_snapshots_hour, deployment_block, deployment_timestamp)
+    valid_hours = tuple(h for h in time_for_snapshots_hour if h <= elapsed_hours)
+    snapshots = {f"Holders_{h}h": math.nan for h in time_for_snapshots_hour}
+    if valid_hours:
+        snapshots.update(get_holders_snapshots(chain, token_address, valid_hours, deployment_block, deployment_timestamp))
+    else:
+        print(f"...Token {token_address} is younger than any snapshot window")
     return snapshots
 
 
@@ -146,7 +154,7 @@ def get_current_token_holder_count_bsc(token_address):
 
 def get_onchain_features_live(chain, token_address, deployment_block, deployment_timestamp, latest_block, latest_block_timestamp, last_activity_timestamp):
     project_period_days = get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp, last_activity_timestamp)
-    snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS, deployment_block, deployment_timestamp)
+    snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS, deployment_block, deployment_timestamp, latest_block_timestamp)
     blockchain_type = get_blockchain_type(chain)
     number_of_transactions = get_number_of_transactions(chain, token_address, deployment_block, latest_block)
     current_token_holder_count = get_current_token_holder_count(chain, token_address)
