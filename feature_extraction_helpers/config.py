@@ -2,6 +2,7 @@
 # data sources, source-specific chain ID resolutions, API limits, waiting intervals
 
 import os
+import re
 
 from dotenv import load_dotenv
 from datetime import datetime, timezone
@@ -33,15 +34,19 @@ SERP_BASE_URL = "https://serpapi.com/search?engine=google"
 # https://docs.dexscreener.com/api/reference (is used to get website URL and X profile based on token address)
 DEXSCREENER_BASE_URL = "https://api.dexscreener.com"
 
-# Sometimes server return code 500 (internal server error), so 3 retries per call is set
-BLOCKSCOUT_MAX_RETRIES = 3
-BLOCKSCOUT_RETRY_DELAY_SECONDS = 1.5
 # https://docs.coingecko.com/docs/keyless-public-api
 COINGECKO_API_KEY= os.getenv('COINGECKO_API_KEY')
 COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3'
 # https://docs.coingecko.com/docs/keyless-public-api
 GECKOTERMINAL_BASE_URL = 'https://api.coingecko.com/api/v3/onchain'
 
+
+# A guard for rejecting calls for API where a lot of information is retrieved
+ETHERSCAN_MAX_RETRIES = 3
+ETHERSCAN_RETRY_DELAY_SECONDS = 1.0
+# Sometimes server return code 500 (internal server error), so 3 retries per call is set
+BLOCKSCOUT_MAX_RETRIES = 3
+BLOCKSCOUT_RETRY_DELAY_SECONDS = 1.5
 
 # IDs of chains supported by Etherscan and relevant for the dataset
 # Reference: https://docs.etherscan.io/supported-chains
@@ -78,7 +83,7 @@ NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE = 1999999
 
 
 # API limitations for calls per time
-ETHERSCAN_TIME_INTERVAL = 0.35
+ETHERSCAN_TIME_INTERVAL = 0.45              # 3 calls/sec, but here is a conservative number to keep a margin
 NODEREAL_TIME_INTERVAL = 0.20
 # Reference: https://docs.coingecko.com/docs/keyless-public-api
 COINGECKO_TIME_INTERVAL = 0.65
@@ -102,3 +107,6 @@ BLOCK_TIME_PERIODS_BSC = {
         (datetime(2026, 1, 14, tzinfo=timezone.utc), datetime(2100, 1, 1, tzinfo=timezone.utc), 0.45),
     )
 }
+
+# EVM contract address format: '0x' followed by 40 hexadecimal characters
+CONTRACT_ADDRESS_PATTERN = re.compile(r'^0x[a-fA-F0-9]{40}$')

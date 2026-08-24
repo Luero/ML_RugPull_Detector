@@ -16,9 +16,11 @@ import requests
 from datetime import datetime, timezone
 
 from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN_API_KEY, ETHERSCAN_CHAIN_IDS, \
-    ETHERSCAN_BASE_URL, NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS_BSC, COINGECKO_BASE_URL, COINGECKO_TIME_INTERVAL, \
+    ETHERSCAN_BASE_URL, NODEREAL_TIME_INTERVAL, MEGANODE_BSC_URL, BLOCK_TIME_PERIODS_BSC, COINGECKO_BASE_URL, \
+    COINGECKO_TIME_INTERVAL, \
     COINGECKO_API_KEY, GECKOTERMINAL_TIME_INTERVAL, GECKOTERMINAL_BASE_URL, MORALIS_TIME_INTERVAL, MORALIS_API_KEY, \
-    MORALIS_BASE_URL, NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE, DEXSCREENER_BASE_URL
+    MORALIS_BASE_URL, NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE, DEXSCREENER_BASE_URL, ETHERSCAN_MAX_RETRIES, \
+    ETHERSCAN_RETRY_DELAY_SECONDS
 
 # Based on TM-RugPull methodology
 LIVE_THRESHOLD_HOURS = 72
@@ -42,35 +44,54 @@ def wait_for_rate_limit(provider, time_interval):
 
 # General function to query Etherscan's endpoints
 def query_etherscan(chain, params):
-    wait_for_rate_limit('etherscan', ETHERSCAN_TIME_INTERVAL)
     data_not_found_messages = {'No records found', 'No data found', 'No transactions found'}
     params = params.copy()
     params['apikey'] = ETHERSCAN_API_KEY
     params['chainid'] = ETHERSCAN_CHAIN_IDS[chain]
-    response = SESSION.get(ETHERSCAN_BASE_URL, params=params, timeout=30)
-    if response.status_code != 200:
-        print(f"...HTTP error {response.status_code} for {params.get('action')}")
-        return None
-    data = response.json()
-    if params.get('module') == 'proxy':
-        if 'error' in data:
-            print(f"...Proxy API error: {data['error']}")
+    for attempt in range(1, ETHERSCAN_MAX_RETRIES + 1):
+        wait_for_rate_limit('etherscan', ETHERSCAN_TIME_INTERVAL)
+        try:
+            response = SESSION.get(ETHERSCAN_BASE_URL, params=params, timeout=30)
+        except requests.RequestException as e:
+            print(f"...Request error for {params.get('action')}: {e}")
+            return None
+        if response.status_code != 200:
+            print(f"...HTTP error {response.status_code} for {params.get('action')}")
+            return None
+        data = response.json()
+        # If per-second limit still hit the call is retried after a pause
+        if data.get('message') == 'NOTOK' and 'rate limit' in str(data.get('result', '')).lower():
+            if attempt < ETHERSCAN_MAX_RETRIES:
+                print(
+                    f"...Etherscan rate limit hit for {params.get('action')} (attempt {attempt}/{ETHERSCAN_MAX_RETRIES}), retrying...")
+                time.sleep(ETHERSCAN_RETRY_DELAY_SECONDS)
+                continue
+            print(f"...Etherscan rate limit reached for {params.get('action')}")
+            return None
+        if params.get('module') == 'proxy':
+            if 'error' in data:
+                print(f"...Proxy API error: {data['error']}")
+                return None
+            return data
+        if data.get('status') not in ('1', 1):
+            # A valid empty result
+            if data.get('message') in data_not_found_messages:
+                return data
+            print(f"...API error: {data.get('message')}: {data.get('result')}")
             return None
         return data
-    if data.get('status') not in ('1', 1):
-        # A valid empty result, not an error, in holders count will be treated as 0 holders
-        if data.get('message') in data_not_found_messages:
-            return data
-        print(f"...API error: {data.get('message')}: {data.get('result')}")
-        return None
-    return data
+    return None
 
 
 # General function to query MegaNode endpoints
 def query_meganode(method, params):
     wait_for_rate_limit('nodereal', NODEREAL_TIME_INTERVAL)
     payload = {'jsonrpc': '2.0', 'method': method, 'params': params, 'id': 1}
-    response = SESSION.post(MEGANODE_BSC_URL, json=payload, timeout=30)
+    try:
+        response = SESSION.post(MEGANODE_BSC_URL, json=payload, timeout=30)
+    except requests.RequestException as e:
+        print(f"...Request error for {method}: {e}")
+        return None
     if response.status_code != 200:
         print(f"...HTTP error {response.status_code} for {method}")
         return None
@@ -88,7 +109,11 @@ def query_meganode(method, params):
 def query_coingecko(endpoint, params=None):
     wait_for_rate_limit('coingecko', COINGECKO_TIME_INTERVAL)
     headers = {'x-cg-demo-api-key': COINGECKO_API_KEY}
-    response = SESSION.get(f"{COINGECKO_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
+    try:
+        response = SESSION.get(f"{COINGECKO_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
+    except requests.RequestException as e:
+        print(f"...Request error for {endpoint}: {e}")
+        return None
     if response.status_code == 404:
         print(f"...CoinGecko has no tracked coin for {endpoint}")
         return None
@@ -103,7 +128,11 @@ def query_coingecko(endpoint, params=None):
 def query_geckoterminal(endpoint, params=None):
     wait_for_rate_limit('geckoterminal', GECKOTERMINAL_TIME_INTERVAL)
     headers = {'x-cg-demo-api-key': COINGECKO_API_KEY}
-    response = SESSION.get(f"{GECKOTERMINAL_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
+    try:
+        response = SESSION.get(f"{GECKOTERMINAL_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
+    except requests.RequestException as e:
+        print(f"...Request error for {endpoint}: {e}")
+        return None
     if response.status_code != 200:
         print(f"...HTTP error {response.status_code} for {endpoint}")
         print(response.json())
@@ -116,7 +145,11 @@ def query_geckoterminal(endpoint, params=None):
 def query_moralis(endpoint, params=None):
     wait_for_rate_limit('moralis', MORALIS_TIME_INTERVAL)
     headers = {'X-API-Key': MORALIS_API_KEY}
-    response = SESSION.get(f"{MORALIS_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
+    try:
+        response = SESSION.get(f"{MORALIS_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
+    except requests.RequestException as e:
+        print(f"...Request error for {endpoint}: {e}")
+        return None
     if response.status_code == 404:
         print(f"...Moralis has no data for {endpoint}")
         return None
@@ -130,7 +163,11 @@ def query_moralis(endpoint, params=None):
 # General function to query DEXScreener's public endpoints
 # Reference: https://docs.dexscreener.com/api/reference
 def query_dexscreener(endpoint):
-    response = SESSION.get(f"{DEXSCREENER_BASE_URL}{endpoint}", timeout=30)
+    try:
+        response = SESSION.get(f"{DEXSCREENER_BASE_URL}{endpoint}", timeout=30)
+    except requests.RequestException as e:
+        print(f"...Request error for DEXScreener endpoint {endpoint}: {e}")
+        return None
     if response.status_code != 200:
         print(f"...HTTP error {response.status_code} for DEXScreener endpoint {endpoint}")
         return None
@@ -156,7 +193,11 @@ def get_deployment_block_and_timestamp(chain, token_address):
 def get_deployment_block_and_timestamp_bsc(token_address):
     wait_for_rate_limit('nodereal', NODEREAL_TIME_INTERVAL)
     payload = {'jsonrpc': '2.0', 'method': 'nr_getContractCreationTransaction', 'params': [token_address], 'id': 1}
-    response = SESSION.post(MEGANODE_BSC_URL, json=payload, timeout=30)
+    try:
+        response = SESSION.post(MEGANODE_BSC_URL, json=payload, timeout=30)
+    except requests.RequestException as e:
+        print(f"Request error for {token_address}: {e}")
+        return None, None
     if response.status_code != 200:
         print(f"...HTTP error {response.status_code} for {token_address}")
         return None, None

@@ -12,6 +12,8 @@ import re
 
 from datetime import datetime, timezone
 
+import requests
+
 from feature_extraction_helpers.config import SERP_API_KEY, SERP_BASE_URL, DEXSCREENER_CHAIN_IDS, MORALIS_CHAIN_IDS, COINGECKO_CHAIN_IDS
 from feature_extraction_helpers.general_extraction_helpers import query_dexscreener, query_moralis, query_coingecko, \
     SESSION
@@ -31,19 +33,27 @@ def query_serpapi(search_term, date_range=None):
     if date_range is not None:
         cd_min, cd_max = date_range
         params['tbs'] = f"cdr:1,cd_min:{cd_min},cd_max:{cd_max}"
-    response = SESSION.get(SERP_BASE_URL, params=params, timeout=30)
+    try:
+        response = SESSION.get(SERP_BASE_URL, params=params, timeout=30)
+    except requests.RequestException as e:
+        print(f"...Request error for SerpApi query '{search_term}': {e}")
+        return None
     if response.status_code != 200:
-        print(f"HTTP error {response.status_code} for SerpApi query '{search_term}'")
+        print(f"...HTTP error {response.status_code} for SerpApi query '{search_term}'")
         return None
     data = response.json()
     if 'error' in data:
+        # SerpAPI returns error if results for a search term are not found (tried empirically)
+        # Should be 0 for feature extraction, not None
+        if "hasn't returned any results" in data['error']:
+            return data
         print(f"...SerpApi error for '{search_term}': {data['error']}")
         return None
     return data
 
 
 # Get Google's total results for a search term for a particular date
-# Successful search with no results returns 0 ((consistent with TM-RugPull methodology), failed request returns None
+# Successful search with no results returns 0 (consistent with TM-RugPull methodology), failed request returns None
 def get_google_result_count(search_term, target_timestamp):
     target_date = convert_cdr_date(target_timestamp)
     data = query_serpapi(search_term, date_range=(target_date, target_date))
@@ -143,6 +153,7 @@ def get_project_socials(chain, token_address):
             x_profile_url = resolved_x_profile
     if website_url is None and x_profile_url is None:
         print(f"...No socials resolved for {token_address} on {chain} from any source")
+    print(f"...Website: {website_url}, X_profile: {x_profile_url}")
     return website_url, x_profile_url
 
 

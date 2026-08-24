@@ -4,7 +4,9 @@
 # then in extract_features calls feature extraction functions one by one (prices -> onchain -> source code -> OSINT).
 # Returns a dictionary with extracted features, named as relevant features in the dataset, to be consumed by prediction module.
 
+import math
 
+from feature_extraction_helpers.config import ETHERSCAN_CHAIN_IDS, CONTRACT_ADDRESS_PATTERN
 from feature_extraction_helpers.source_code_helplers import get_source_code_features_live
 from feature_extraction_helpers.onchain_extraction_helpers import get_onchain_features_live
 from feature_extraction_helpers.prices_extraction_helpers import get_max_price_quarters_live, get_window_end_timestamp
@@ -12,7 +14,7 @@ from feature_extraction_helpers.osnit_extraction_helpers import get_osint_featur
 from feature_extraction_helpers.general_extraction_helpers import get_latest_block_with_timestamp, \
     get_deployment_block_and_timestamp, get_last_activity_timestamp
 
-# TODO: add validation for a contract address
+
 # Call all extraction scripts for a single query using chain and token address
 class FeatureExtractor:
     def __init__(self, chain, token_address):
@@ -27,30 +29,44 @@ class FeatureExtractor:
         self.window_end = None
 
 
+    # Validate submitted query before any API call is made
+    def validate_query(self):
+        if self.chain not in ETHERSCAN_CHAIN_IDS:
+            return f"Unsupported blockchain '{self.chain}', supported: {', '.join(ETHERSCAN_CHAIN_IDS)}"
+        if not isinstance(self.token_address, str) or not CONTRACT_ADDRESS_PATTERN.match(self.token_address):
+            return f"'{self.token_address}' is not a valid contract address: '0x' followed by 40 hexadecimal characters is expected"
+        return None
+
+
     # Retrieve variables that are reused by all extraction functions
-    # Returns False if failed
+    # Returns None, if success, and an error message if failure
     def prepare_shared_context(self):
         print("Retrieving shared context...")
         # The latest block is used as 'now' point at time to extract values at the time of query and reuses them
         # for all features for consistency (not separate calls for the last block per feature, as blocks may appear during API calls execution)
         self.latest_block, self.latest_block_timestamp = get_latest_block_with_timestamp(self.chain)
         if self.latest_block is None:
-            print(f"...Could not get the latest block for {self.chain}")
-            return False
+            return f"Latest block for {self.chain} is unavailable, try again later"
         self.deployment_block, self.deployment_timestamp = get_deployment_block_and_timestamp(self.chain, self.token_address)
         if self.deployment_block is None:
-            print(f"...Could not get deployment info for {self.token_address} on {self.chain}")
-            return False
+            return f"No contract deployment found for {self.token_address} on {self.chain} (wrong blockchain or not a token contract address)"
         self.last_activity_timestamp = get_last_activity_timestamp(self.chain, self.token_address, self.latest_block, self.deployment_block)
         self.window_end = get_window_end_timestamp(self.latest_block_timestamp, self.last_activity_timestamp)
-        return True
+        return None
 
 
     # Extract all features consumed by the prediction module for a queried token
-    # Returns a dictionary with dataset column names or None if shared context is not retrieved
+    # Returns a dictionary with:
+    # - 'features' (extracted features with dataset column names or None if extraction failed);
+    # - 'missing_features' (names of features that could not be extracted (so UI can warn user);
+    # - 'error' (explanation for UI when extraction failed)
     def extract_features(self):
-        if not self.prepare_shared_context():
-            return None
+        error = self.validate_query()
+        if error is None:
+            error = self.prepare_shared_context()
+        if error is not None:
+            print(error)
+            return {'features': None, 'missing_features': None, 'error': error}
         features = {'Blockchain': self.chain}
 
         # Price features extraction, also resolves window_start (the first trading activity based on the earliest pool creation)
@@ -75,13 +91,16 @@ class FeatureExtractor:
         osint_features = get_osint_features_live(self.chain, self.token_address, trading_start_timestamp, self.window_end)
         features.update(osint_features)
 
-        return features
+        # Features that could not be extracted, so UI can report completeness of data
+        missing_features = sorted(name for name, value in features.items() if value is None or (isinstance(value, float) and math.isnan(value)))
+
+        return {'features': features, 'missing_features': missing_features, 'error': None}
 
 
 def main():
-    extractor = FeatureExtractor('ETH', '0x3cdb41027d61c413e064e84d9c21812b6ef004f1')
-    features = extractor.extract_features()
-    print(features)
+    extractor = FeatureExtractor('ARBI', '0xd58D345Fd9c82262E087d2D0607624B410D88242')
+    result = extractor.extract_features()
+    print(result)
 
 
 if __name__ == "__main__":
@@ -118,8 +137,10 @@ if __name__ == "__main__":
 # 'ETH', '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984' - Uniswap, big and old
 
 # From onchain_extractor_helper
-# 'BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00') - PEPE, more than 2 mln transactions
+# 'BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00' - PEPE, more than 2 mln transactions
 # 'BSC', '0x444045B0EE1ee319A660a5E3d604CA0ffA35ACaA' - BTW, more than 9 mln transactions
 # 'BSC', '0x5108C0E857b30A8d191554134628fe0f1B7e78b4' - TITANIA, small one, 90 000 transactions, 8000 holders
 # 'ARBI', '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1' - GNO, big one
 # 'POLYGON', '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC' - LEO, small and recent
+# 'POLYGON', '0xe2341718c6C0CbFa8e6686102DD8FbF4047a9e9B' - AIOZ, small
+# 'ARBI', '0xd58D345Fd9c82262E087d2D0607624B410D88242' - TRB, very small (10 holders)

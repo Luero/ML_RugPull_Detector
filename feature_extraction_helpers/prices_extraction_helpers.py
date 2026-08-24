@@ -277,7 +277,7 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, wind
             return result
         print(f"...CoinGecko data for {token_address} on {chain} doesn't cover Q1/Q2, trying other sources")
     else:
-        print(f"...CoinGecko has no data for {token_address} on {chain}, trying other sources")
+        print(f"...CoinGecko has no data for {token_address} on {chain}")
     prices, price_source = try_geckoterminal_or_moralis(chain, token_address, window_start, window_end, top_pool_adr, earliest_pool_adr, top_token_side, earliest_token_side)
     if prices is None:
         return {'MaxPrice (Quarter 1)': math.nan, 'MaxPrice (Quarter 2)': math.nan, 'price_source': None, 'window_start': window_start}
