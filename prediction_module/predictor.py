@@ -11,8 +11,8 @@ MODEL_PATH = 'prediction_module/models/xgboost_model.json'
 PREPROCESSING_PATH = 'prediction_module/models/preprocessing.joblib'
 
 # Probability threshold to convert scam probability into class
-# 0.6 is chosen to ensure the model does not give predictions which could be as good as random results
-PREDICTION_THRESHOLD = 0.6
+# 0.85 is chosen to reduce false positive results and ensure that system reports scam only if it has valid grounds to do so
+PREDICTION_THRESHOLD = 0.85
 
 # Number of top risk signals returned with a prediction
 TOP_RISK_SIGNALS_COUNT = 3
@@ -39,7 +39,6 @@ RISK_SIGNAL_DESCRIPTIONS = {
 ENCODED_FEATURE_SOURCES = {'Blockchain Type_POS': 'Blockchain Type', 'Blockchain Type_POSA': 'Blockchain Type'}
 
 
-# TODO: verification of model? Do I need it?
 # Take a dictionary of extracted features and return scam probability with a class label
 class Predictor:
     # Model and pre-processors are loaded once and reused for all predictions
@@ -59,6 +58,15 @@ class Predictor:
         self.kept_features = preprocessors['xgboost_kept_features']
         self.class_mapping = preprocessors['class_mapping']
         self.scam_class_index = self.class_mapping['scam']
+        self.validate_model_and_preprocessors()
+
+
+    # Validate that loaded model and pre-processors are consistent with each other when Predictor starts running
+    def validate_model_and_preprocessors(self):
+        assert 'class' not in self.numeric_cols, "numeric_cols contains the class label"
+        assert set(self.kept_features) <= set(self.full_feature_names), "Kept features are missing from the full feature set"
+        assert self.kept_features == [f for f in self.full_feature_names if f in set(self.kept_features)], \
+            "Kept features order differs from training column order"
 
 
     # Replay pre-processing from model training extracted features
