@@ -1,16 +1,45 @@
+# TODO: general comment
+
+import math
+
 import joblib
 import pandas as pd
 import xgboost as xgb
 
 # Paths to the model and pre-processor
-MODEL_PATH = 'models/xgboost_model.json'
-PREPROCESSING_PATH = 'models/preprocessing.joblib'
+MODEL_PATH = 'prediction_module/models/xgboost_model.json'
+PREPROCESSING_PATH = 'prediction_module/models/preprocessing.joblib'
 
 # Probability threshold to convert scam probability into class
 # 0.6 is chosen to ensure the model does not give predictions which could be as good as random results
 PREDICTION_THRESHOLD = 0.6
 
+# Number of top risk signals returned with a prediction
+TOP_RISK_SIGNALS_COUNT = 3
 
+# Descriptions of features to display to a user as risk signals
+RISK_SIGNAL_DESCRIPTIONS = {
+    'MaxPrice (Quarter 1)': "Maximum price during the first quarter of the project's observed lifetime",
+    'MaxPrice (Quarter 2)': "Maximum price during the second quarter of the project's observed lifetime",
+    'the number of Transactions': 'Total number of token transfers',
+    'Number of holders': 'Current number of token holders',
+    'Google results for project website (first day)': "Number of Google search results for the project's website at the first day of trading activity",
+    'Google results for project x profile (first days)': "Number of Google search results for the project's X profile at the first day of trading activity",
+    'Google results for project x profile (duration/2)': "Number of Google search results for the project's X profile at the project's lifetime midpoint",
+    'project period (days)': 'Project lifetime in days',
+    'Holders_12h': 'Number of holders 12 hours after deployment',
+    'Holders_24h': 'Number of holders 24 hours after deployment',
+    'has_contract_swap_patterns': 'Contract source code contains a function to swap its token balance to base cryptocurrency',
+    'has_owner_guard': 'Contract source code contains functions to restrict swaps only to privileged accounts',
+    'Blockchain Type_POS': 'Deployed on a proof-of-stake chain like Ethereum',
+    'Blockchain Type_POSA': 'Deployed on a proof-of-staked-authority chain like BSC',
+}
+
+# Raw source columns for one-hot encoded features, to look up the extracted value reported in risk signals
+ENCODED_FEATURE_SOURCES = {'Blockchain Type_POS': 'Blockchain Type', 'Blockchain Type_POSA': 'Blockchain Type'}
+
+
+# TODO: verification of model? Do I need it?
 # Take a dictionary of extracted features and return scam probability with a class label
 class Predictor:
     # Model and pre-processors are loaded once and reused for all predictions
@@ -64,14 +93,44 @@ class Predictor:
         return model_input
 
 
+    # Explain prediction with features that influence most to the result.
+    # Uses SHAP values computed for input row
+    # Reference: https://xgboost.readthedocs.io/en/stable/prediction.html
+    def get_risk_signals(self, model_input, features):
+        contributions = self.model.get_booster().predict(xgb.DMatrix(model_input.to_numpy()), pred_contribs=True)[0]
+        feature_contributions = list(zip(self.kept_features, contributions[:-1]))
+        feature_contributions.sort(key=lambda item: item[1], reverse=True)
+
+        risk_signals = []
+        for feature, contribution in feature_contributions:
+            if len(risk_signals) == TOP_RISK_SIGNALS_COUNT:
+                break
+            # Only features that lead to 'scam' verdict are risk signals
+            if contribution <= 0:
+                break
+            source_column = ENCODED_FEATURE_SOURCES.get(feature, feature)
+            raw_value = features.get(source_column)
+            # Imputed features are not reported, since their values are synthetic (imputed by pre-processing, not obtained from feature extraction)
+            if raw_value is None or (isinstance(raw_value, float) and math.isnan(raw_value)):
+                continue
+            risk_signals.append({
+                'feature': feature,
+                'description': RISK_SIGNAL_DESCRIPTIONS[feature],
+                'value': raw_value,
+            })
+
+        return risk_signals
+
+
     # Make a prediction based on extracted features
-    # Return 'prediction' ('scam' or 'normal'), 'scam_probability' (float between 0 and 1) and 'error' (if any)
+    # Return 'prediction' ('scam' or 'normal'), 'scam_probability' (float between 0 and 1), 'risk_signals' and 'error' (if any)
     def predict(self, features):
         if not features:
-            return {'prediction': None, 'scam_probability': None, 'error': 'No features to predict on'}
+            return {'prediction': None, 'scam_probability': None, 'risk_signals': None, 'error': 'No features to predict on'}
         model_input = self.prepare_model_input(features)
         if model_input is None:
-            return {'prediction': None, 'scam_probability': None, 'error': 'Features could not be pre-processed'}
+            return {'prediction': None, 'scam_probability': None, 'risk_signals': None, 'error': 'Features could not be pre-processed'}
         scam_probability = float(self.model.predict_proba(model_input.to_numpy())[0, self.scam_class_index])
         prediction = 'scam' if scam_probability >= PREDICTION_THRESHOLD else 'normal'
-        return {'prediction': prediction, 'scam_probability': scam_probability, 'error': None}
+        risk_signals = self.get_risk_signals(model_input, features)
+        return {'prediction': prediction, 'scam_probability': scam_probability, 'risk_signals': risk_signals, 'error': None}

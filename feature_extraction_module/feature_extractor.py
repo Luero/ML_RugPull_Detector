@@ -4,6 +4,8 @@
 # then in extract_features calls feature extraction functions one by one (prices -> onchain -> source code -> OSINT).
 # Returns a dictionary with extracted features, named as relevant features in the dataset, to be consumed by prediction module.
 
+
+# TODO: delete main()
 import math
 
 from feature_extraction_helpers.config import ETHERSCAN_CHAIN_IDS, CONTRACT_ADDRESS_PATTERN
@@ -143,4 +145,4 @@ if __name__ == "__main__":
 # 'ARBI', '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1' - GNO, big one
 # 'POLYGON', '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC' - LEO, small and recent
 # 'POLYGON', '0xe2341718c6C0CbFa8e6686102DD8FbF4047a9e9B' - AIOZ, small
-# 'ARBI', '0xd58D345Fd9c82262E087d2D0607624B410D88242' - TRB, very small (10 holders)
+# 'ARBI', '0xd58D345Fd9c82262E087d2D0607624B410D88242' - TRB, very small (10 holders) - reported by the system as scam
