@@ -20,7 +20,8 @@ from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN
     COINGECKO_TIME_INTERVAL, \
     COINGECKO_API_KEY, GECKOTERMINAL_TIME_INTERVAL, GECKOTERMINAL_BASE_URL, MORALIS_TIME_INTERVAL, MORALIS_API_KEY, \
     MORALIS_BASE_URL, NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE, DEXSCREENER_BASE_URL, ETHERSCAN_MAX_RETRIES, \
-    ETHERSCAN_RETRY_DELAY_SECONDS
+    ETHERSCAN_RETRY_DELAY_SECONDS, GECKOTERMINAL_MAX_RETRIES, GECKOTERMINAL_RETRY_DELAY_SECONDS, MORALIS_MAX_RETRIES, \
+    MORALIS_RETRY_DELAY_SECONDS
 
 # Based on TM-RugPull methodology
 LIVE_THRESHOLD_HOURS = 72
@@ -126,38 +127,48 @@ def query_coingecko(endpoint, params=None):
 # General function to query GeckoTerminal's public endpoints
 # Reference: https://docs.coingecko.com/docs/keyless-public-api
 def query_geckoterminal(endpoint, params=None):
-    wait_for_rate_limit('geckoterminal', GECKOTERMINAL_TIME_INTERVAL)
     headers = {'x-cg-demo-api-key': COINGECKO_API_KEY}
-    try:
-        response = SESSION.get(f"{GECKOTERMINAL_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
-    except requests.RequestException as e:
-        print(f"...Request error for {endpoint}: {e}")
+    for attempt in range(1, GECKOTERMINAL_MAX_RETRIES + 1):
+        wait_for_rate_limit('geckoterminal', GECKOTERMINAL_TIME_INTERVAL)
+        try:
+            response = SESSION.get(f"{GECKOTERMINAL_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
+        except requests.RequestException as e:
+            print(f"...Request error for {endpoint}: {e}")
+            return None
+        if response.status_code == 200:
+            return response.json()
+        # Error body may be non-JSON, so raw text is printed (confirmed empirically)
+        print(f"...HTTP error {response.status_code} for {endpoint} (attempt {attempt}/{GECKOTERMINAL_MAX_RETRIES}): {response.text[:200]}")
+        if response.status_code in (429, 500, 502, 503, 504) and attempt < GECKOTERMINAL_MAX_RETRIES:
+            time.sleep(GECKOTERMINAL_RETRY_DELAY_SECONDS)
+            continue
         return None
-    if response.status_code != 200:
-        print(f"...HTTP error {response.status_code} for {endpoint}")
-        print(response.json())
-        return None
-    return response.json()
+    return None
 
 
 # General function to query Moralis's endpoints
 # https://docs.moralis.com/data-api/evm/token/overview
 def query_moralis(endpoint, params=None):
-    wait_for_rate_limit('moralis', MORALIS_TIME_INTERVAL)
     headers = {'X-API-Key': MORALIS_API_KEY}
-    try:
-        response = SESSION.get(f"{MORALIS_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
-    except requests.RequestException as e:
-        print(f"...Request error for {endpoint}: {e}")
+    for attempt in range(1, MORALIS_MAX_RETRIES + 1):
+        wait_for_rate_limit('moralis', MORALIS_TIME_INTERVAL)
+        try:
+            response = SESSION.get(f"{MORALIS_BASE_URL}{endpoint}", params=params or {}, headers=headers, timeout=30)
+        except requests.RequestException as e:
+            print(f"...Request error for {endpoint}: {e}")
+            return None
+        if response.status_code == 200:
+            return response.json()
+        if response.status_code == 404:
+            print(f"...Moralis has no data for {endpoint}")
+            return None
+        # Error body may be non-JSON, so raw text is printed
+        print(f"...HTTP error {response.status_code} for {endpoint} (attempt {attempt}/{MORALIS_MAX_RETRIES}): {response.text[:200]}")
+        if response.status_code in (429, 500, 502, 503, 504) and attempt < MORALIS_MAX_RETRIES:
+            time.sleep(MORALIS_RETRY_DELAY_SECONDS)
+            continue
         return None
-    if response.status_code == 404:
-        print(f"...Moralis has no data for {endpoint}")
-        return None
-    if response.status_code != 200:
-        print(f"...HTTP error {response.status_code} for {endpoint}")
-        print(response.json())
-        return None
-    return response.json()
+    return None
 
 
 # General function to query DEXScreener's public endpoints
@@ -273,7 +284,28 @@ def get_block_number_by_timestamp(chain, target_timestamp):
     data = query_etherscan(chain, {'module': 'block', 'action': 'getblocknobytime', 'timestamp': int(target_timestamp), 'closest': 'before'})
     if data is None:
         return None
-    return int(data['result'])
+    result = data.get('result')
+    # Etherscan can respond with error string instead of number (revealed while testing)
+    if not str(result).isdigit():
+        print(f"...No block number resolved for timestamp {int(target_timestamp)}: {result}")
+        return None
+    return int(result)
+
+
+# Binary search for Arbitrum tokens: search for block closest to to_timestamp
+def find_block_by_timestamp(chain, to_timestamp, low_block, high_block):
+    closest_block = low_block
+    while low_block <= high_block:
+        mid_block = (low_block + high_block) // 2
+        mid_timestamp = get_block_timestamp(chain, mid_block)
+        if mid_timestamp is None:
+            break
+        if mid_timestamp <= to_timestamp:
+            closest_block = mid_block
+            low_block = mid_block + 1
+        else:
+            high_block = mid_block - 1
+    return closest_block
 
 
 # Extract block time for the token's deployment timestamp

@@ -47,6 +47,12 @@ ETHERSCAN_RETRY_DELAY_SECONDS = 1.0
 # Sometimes server return code 500 (internal server error), so 3 retries per call is set
 BLOCKSCOUT_MAX_RETRIES = 3
 BLOCKSCOUT_RETRY_DELAY_SECONDS = 1.5
+# Same logic
+GECKOTERMINAL_MAX_RETRIES = 3
+GECKOTERMINAL_RETRY_DELAY_SECONDS = 2.0
+# Same logic
+MORALIS_MAX_RETRIES = 3
+MORALIS_RETRY_DELAY_SECONDS = 1.0
 
 # IDs of chains supported by Etherscan and relevant for the dataset
 # Reference: https://docs.etherscan.io/supported-chains

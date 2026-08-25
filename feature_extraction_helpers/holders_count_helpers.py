@@ -5,7 +5,8 @@ import math
 
 from feature_extraction_helpers.config import NODEREAL_BLOCK_RANGE_SIZE, ETH_LOG_RESULT_LIMIT, TRANSFER_EVENT_HASH
 from feature_extraction_helpers.general_extraction_helpers import query_etherscan, query_meganode, \
-    get_deployment_block_and_timestamp, hours_to_blocks, get_block_number_by_timestamp
+    get_deployment_block_and_timestamp, hours_to_blocks, get_block_number_by_timestamp, get_latest_block_eth, \
+    find_block_by_timestamp
 
 
 # Extract all transfer event logs between from_block and to_block, chunked due to API limits
@@ -161,7 +162,15 @@ def get_holders_snapshots(chain, token_address, time_for_snapshot_hours, deploym
     if chain != 'BSC':
         # Blocks with timestamp closest to snapshots intervals
         target_blocks = {h: get_block_number_by_timestamp(chain, deployment_timestamp + h * 3600) for h in time_for_snapshot_hours}
-        # If any snapshot block could not be resolved, holder counts are treated as missing values
+        # Etherscan cannot resolve timestamps before 2022 for Arbitrum, fall back to binary search
+        unresolved_hours = [h for h, block in target_blocks.items() if block is None]
+        if unresolved_hours:
+            print(f"...Falling back to binary search for {token_address}")
+            latest_block = get_latest_block_eth(chain)
+            if latest_block is not None:
+                for h in unresolved_hours:
+                    target_blocks[h] = find_block_by_timestamp(chain, deployment_timestamp + h * 3600, deployment_block, latest_block)
+        # If any snapshot block still not resolved, holder counts are treated as missing values
         if any(block is None for block in target_blocks.values()):
             print(f"...Could not resolve snapshot blocks for {token_address}")
             return {f"Holders_{h}h": math.nan for h in time_for_snapshot_hours}
