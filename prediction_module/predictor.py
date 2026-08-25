@@ -1,4 +1,6 @@
 import joblib
+import pandas as pd
+import xgboost as xgb
 
 # Paths to the model and pre-processor
 MODEL_PATH = 'models/xgboost_model.json'
@@ -12,7 +14,7 @@ PREDICTION_THRESHOLD = 0.6
 # Take a dictionary of extracted features and return scam probability with a class label
 class Predictor:
     # Model and pre-processors are loaded once and reused for all predictions
-    def __init__(self, model_path=MODEL_PATH, preprocessing_path=PREPROCESSING_PATH, xgb=None):
+    def __init__(self, model_path=MODEL_PATH, preprocessing_path=PREPROCESSING_PATH):
         self.model = xgb.XGBClassifier()
         self.model.load_model(model_path)
         preprocessors = joblib.load(preprocessing_path)
@@ -30,9 +32,36 @@ class Predictor:
         self.scam_class_index = self.class_mapping['scam']
 
 
-    # TODO
+    # Replay pre-processing from model training extracted features
     def prepare_model_input(self, features):
-        return
+        raw_columns = self.numeric_cols + self.categorical_cols
+        unexpected_features = [name for name in features if name not in raw_columns]
+        if unexpected_features:
+            print(f"Ignoring extracted features unused by the model: {unexpected_features}")
+        live_data = pd.DataFrame([{col: features.get(col) for col in raw_columns}])
+        # Failed extractions (None) are treated as missing values
+        live_data[self.numeric_cols] = live_data[self.numeric_cols].apply(pd.to_numeric, errors='coerce')
+
+        for col, upper in self.clip_thresholds.items():
+            live_data[col] = live_data[col].clip(upper=upper)
+
+        live_data[self.numeric_cols] = self.num_imputer.transform(live_data[self.numeric_cols])
+        live_data[self.categorical_cols] = self.cat_imputer.transform(live_data[self.categorical_cols])
+        cat_array = self.cat_encoder.transform(live_data[self.categorical_cols])
+        cat_feature_names = self.cat_encoder.get_feature_names_out(self.categorical_cols)
+        cat_df = pd.DataFrame(cat_array, columns=cat_feature_names, index=live_data.index)
+        live_data = live_data.drop(columns=self.categorical_cols)
+        for col in cat_df.columns:
+            live_data[col] = cat_df[col]
+        live_data[self.skewed_cols] = self.power_transformer.transform(live_data[self.skewed_cols].astype(float).values)
+
+        model_input = live_data.reindex(columns=self.kept_features)
+        # Can happen only on schema bug, thus, return None
+        if model_input.isna().any().any():
+            print(f"Model input contains missing values after pre-processing: {model_input.columns[model_input.isna().any()].tolist()}")
+            return None
+
+        return model_input
 
 
     # Make a prediction based on extracted features
