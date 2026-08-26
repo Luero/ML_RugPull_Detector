@@ -67,6 +67,7 @@ class Predictor:
         assert set(self.kept_features) <= set(self.full_feature_names), "Kept features are missing from the full feature set"
         assert self.kept_features == [f for f in self.full_feature_names if f in set(self.kept_features)], \
             "Kept features order differs from training column order"
+        assert self.model.n_features_in_ == len(self.kept_features), "Model feature count differs from the kept features list"
 
 
     # Replay pre-processing from model training extracted features
