@@ -87,6 +87,58 @@ def test_query_moralis_scenarios(no_sleep, fresh_rate_limiter, monkeypatch, resp
     assert len(session.calls) == expected_calls
 
 
+# Tests query_meganode and checks that JSON-RPC payload carries requested method
+@pytest.mark.parametrize("response, expected", [
+    # a successful call returns result only
+    (FakeResponse(200, {'jsonrpc': '2.0', 'result': '0x10'}), '0x10'),
+    # a log-limit error triggers range splitting
+    (FakeResponse(200, {'jsonrpc': '2.0', 'error': {'message': 'query returned more than 50000 results, logs count exceeds the limit'}}),
+     'LOG_LIMIT_EXCEEDED'),
+    # any other JSON-RPC error is a failure
+    (FakeResponse(200, {'jsonrpc': '2.0', 'error': {'message': 'invalid params'}}), None),
+    # a response without result field gives None
+    (FakeResponse(200, {'jsonrpc': '2.0'}), None),
+    # HTTP error is a failure
+    (FakeResponse(500, {}), None),
+])
+def test_query_meganode_scenarios(no_sleep, fresh_rate_limiter, monkeypatch, response, expected):
+    session = FakeSession([response])
+    monkeypatch.setattr(helpers, 'SESSION', session)
+    assert helpers.query_meganode('eth_getLogs', [{'fromBlock': '0x0'}]) == expected
+    assert session.calls[0][1]['json']['method'] == 'eth_getLogs'
+
+
+# Tests query_coingecko response handling (one call for every scenario (no retry))
+@pytest.mark.parametrize("response, expected", [
+    # a tracked coin returns its data
+    (FakeResponse(200, {'prices': [[1000, 2.5]]}), {'prices': [[1000, 2.5]]}),
+    # 404 means a coin is not tracked by CoinGecko
+    (FakeResponse(404, {}), None),
+    # 401 (demo plan historical depth limit), failure scenario
+    (FakeResponse(401, {}), None),
+    # a server error is not retried
+    (FakeResponse(500, {}), None),
+])
+def test_query_coingecko_scenarios(no_sleep, fresh_rate_limiter, monkeypatch, response, expected):
+    session = FakeSession([response])
+    monkeypatch.setattr(helpers, 'SESSION', session)
+    assert helpers.query_coingecko('/coins/ethereum/contract/0xabc') == expected
+    assert len(session.calls) == 1
+
+
+# Tests query_dexscreener response handling
+@pytest.mark.parametrize("response, expected", [
+    # a successful call returns pairs list
+    (FakeResponse(200, [{'pairAddress': '0xpool'}]), [{'pairAddress': '0xpool'}]),
+    # any non-200 response is a failure scenario
+    (FakeResponse(429, {}), None),
+])
+def test_query_dexscreener_scenarios(monkeypatch, response, expected):
+    session = FakeSession([response])
+    monkeypatch.setattr(helpers, 'SESSION', session)
+    assert helpers.query_dexscreener('/token-pairs/v1/bsc/0xabc') == expected
+
+
 # Tests that a network-level failure (timeout, connection error) for any query returns error value instead of crashing the whole program
 def test_query_helpers_survive_network_exceptions(no_sleep, fresh_rate_limiter, monkeypatch):
     monkeypatch.setattr(helpers, 'SESSION', RaisingSession())
