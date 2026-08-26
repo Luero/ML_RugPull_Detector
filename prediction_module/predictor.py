@@ -1,4 +1,5 @@
-# TODO: general comment
+# Predictor class takes pre-processors and a trained model at time of initialisation, then applies pre-processors to
+# incoming data (extracted features) and makes a prediction
 
 import math
 

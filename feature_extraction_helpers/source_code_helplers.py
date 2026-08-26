@@ -82,7 +82,7 @@ LP_LOCK_REFERENCE_PATTERNS = [
     # general pattern for 'locker'
     re.compile(r'locker\b', re.IGNORECASE),
     # PinkLock, third-party liquidity locking service
-    re.compile(r'\bPinkLock\b', re.IGNORECASE),
+    re.compile(r'PinkLock\b', re.IGNORECASE),
     # TeamFinance, third-party liquidity locking service
     re.compile(r'\bTeamFinance\b', re.IGNORECASE),
     # UNCX, third-party liquidity locking service
