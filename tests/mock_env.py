@@ -44,3 +44,15 @@ class RaisingSession:
 
     def post(self, url, **kwargs):
         raise requests.exceptions.ConnectionError("Connection aborted")
+
+
+# Builds one GeckoTerminal pool entry in the API response shape
+def make_pool(token_address, side, reserve, created_at, pool_address):
+    token_id = f"eth_{token_address}"
+    return {
+        'attributes': {'reserve_in_usd': reserve, 'pool_created_at': created_at, 'address': pool_address},
+        'relationships': {
+            'base_token': {'data': {'id': token_id if side == 'base' else 'eth_0xother'}},
+            'quote_token': {'data': {'id': token_id if side == 'quote' else 'eth_0xother'}},
+        },
+    }
