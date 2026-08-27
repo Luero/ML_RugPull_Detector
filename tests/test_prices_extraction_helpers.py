@@ -149,14 +149,18 @@ def test_geckoterminal_or_moralis_ordering(monkeypatch):
     now = int(time.time())
     monkeypatch.setattr(prices, 'get_ohlcv_history',
                         lambda chain, pool, f, t, side: ([[f + 10, 1, 2, 0.5, 1.5, 100]], False))
+    monkeypatch.setattr(prices, 'get_prices_defillama', lambda chain, addr, f, t: [(f + 10, 3.5)])
     monkeypatch.setattr(prices, 'get_prices_moralis_pair', lambda chain, pair, f, t: ([(f + 10, 2.5)], False))
-    # within the depth limit
+    # within the depth limit, GeckoTerminal candles, DeFiLlama not consulted
     recent_start = now - 10 * 24 * 3600
-    result, source = prices.try_geckoterminal_or_moralis('ETH', '0xabc', recent_start, now, '0xtop', '0xearliest', 'base', 'base')
+    result, source = prices.try_geckoterminal_defilama_or_moralis('ETH', '0xabc', recent_start, now, '0xtop', '0xearliest', 'base', 'base')
     assert source == 'geckoterminal' and result == [(recent_start + 10, 1.5)]
-    # beyond the depth limit
+    # beyond the depth limit, DeFiLlama is tried first
     old_start = now - GECKOTERMINAL_MAX_DEPTH_SECONDS - 1000
-    result, source = prices.try_geckoterminal_or_moralis('ETH', '0xabc', old_start, now, '0xtop', '0xearliest', 'base', 'base')
+    result, source = prices.try_geckoterminal_defilama_or_moralis('ETH', '0xabc', old_start, now, '0xtop', '0xearliest', 'base', 'base')
+    assert source == 'defillama' and result == [(old_start + 10, 3.5)]
+    # beyond the depth limit with a token DeFiLlama does not track, falls back to Moralis
+    monkeypatch.setattr(prices, 'get_prices_defillama', lambda chain, addr, f, t: None)
+    result, source = prices.try_geckoterminal_defilama_or_moralis('ETH', '0xabc', old_start, now, '0xtop', '0xearliest', 'base', 'base')
     assert source == 'moralis' and result == [(old_start + 10, 2.5)]
-
-    assert prices.try_geckoterminal_or_moralis('ETH', '0xabc', recent_start, now, None, None, None, None) == (None, None)
+    assert prices.try_geckoterminal_defilama_or_moralis('ETH', '0xabc', recent_start, now, None, None, None, None) == (None, None)

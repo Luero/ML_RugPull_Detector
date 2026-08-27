@@ -3,7 +3,7 @@
 # first pool creation and project end (for scam) or query date (for live tokens) divided by 4.
 # Preserves temporal hygiene according to TM-RugPull methodology, no data from the token's later life is ever requested and used.
 #
-# Uses three data sources:
+# Uses four data sources:
 # (1) CoinGecko API, /contract-address-market-chart-range endpoint: a primary call attempted, since it returns necessary data in one call for free,
 #     but it requires a token to be already listed and tracked, which could not be a case for rug-pull tokens which may
 #     live only one or several days;
@@ -13,17 +13,23 @@
 #     It has a historical depth limit of 180 days for retrieving prices, thus, it is used to get timestamp of the earliest pool created and,
 #     if it is within depth limit, query for prices;
 #     Reference: https://docs.coingecko.com/docs/keyless-public-api
-# (3) Moralis API: used as a secondary source, if GeckoTerminal hits its historical depth limit of 180 days. Moralis has less coverage
-#     (fewer chains and DEXes), but does not have a limit for historical requests, so it is useful when a long-living token is queried.
+# (3) DeFiLama API, https://api-docs.defillama.com/#tag/coins/get/chart/{coins}: free and does not require API key, but returns only daily
+#     prices and works only for tokens that are tracked by it, although without historical depth limit.
+#     Therefore, is used for tokens older than 180 days (after GeckoTerminal check).
+# (4) Moralis API: used as addision source, if GeckoTerminal hits its historical depth limit of 180 days, and DeFiLama does not track a token.
+#     Moralis has less coverage than GeckoTerminal (fewer chains and DEXes), but does not have a limit for historical requests, so it is useful
+#     when a long-living token is queried. It's free plan allows only 1-month free trial, thus, it is used only as a supplementary source to
+#     avoid failures on the key expiration.
 
 
 import math
 import time
 from datetime import datetime, timezone
 
-from feature_extraction_helpers.config import COINGECKO_CHAIN_IDS, GECKOTERMINAL_NETWORK_IDS, MORALIS_CHAIN_IDS, GECKOTERMINAL_MAX_DEPTH_SECONDS
-from feature_extraction_helpers.general_extraction_helpers import query_coingecko, is_token_live, query_geckoterminal, query_moralis
-
+from feature_extraction_helpers.config import COINGECKO_CHAIN_IDS, GECKOTERMINAL_NETWORK_IDS, MORALIS_CHAIN_IDS, \
+    GECKOTERMINAL_MAX_DEPTH_SECONDS, DEFILLAMA_CHAIN_IDS, DEFILLAMA_MAX_SPAN
+from feature_extraction_helpers.general_extraction_helpers import query_coingecko, is_token_live, query_geckoterminal, \
+    query_moralis, query_defillama
 
 # Thresholds to pick OHLCV candle resolution based on window length, based on CoinGecko convention.
 # More granularity for short living tokens (to catch rug-pull), increasing for long-living projects due to
@@ -223,10 +229,45 @@ def get_prices_moralis_pair(chain, pair_address, from_timestamp, to_timestamp):
     return all_prices, False
 
 
-# Attempt to fetch data from either Geckoterminal or Moralis.
-# Prices are queried either via Geckoterminal or Moralis, depending on the date of this pool, because Geckoterminal
-# gives prices not later than 180 days under demo API key
-def try_geckoterminal_or_moralis(chain, token_address, window_start, window_end, top_pool_adr, earliest_pool_adr, top_token_side, earliest_token_side):
+# Get daily prices from DeFiLlama for a token between two timestamps (covers only tokens that had tracked liquidity)
+# Reference: https://api-docs.defillama.com/#tag/coins/get/chart/{coins}
+def get_prices_defillama(chain, token_address, from_timestamp, to_timestamp):
+    lama_chain = DEFILLAMA_CHAIN_IDS.get(chain)
+    if lama_chain is None:
+        return None
+    coin_key = f"{lama_chain}:{token_address}"
+    print(f"...Fetching daily prices for {coin_key} via DeFiLlama")
+    all_prices = []
+    cursor_timestamp = from_timestamp
+    while cursor_timestamp < to_timestamp:
+        remaining_days = math.ceil((to_timestamp - cursor_timestamp) / 86400)
+        span = min(remaining_days, DEFILLAMA_MAX_SPAN)
+        data = query_defillama(f"/chart/{coin_key}", params={'start': cursor_timestamp, 'span': span, 'period': '1d'})
+        if data is None:
+            return None
+        price_points = data.get('coins', {}).get(coin_key, {}).get('prices', [])
+        if not price_points:
+            break
+        all_prices.extend((point['timestamp'], point['price']) for point in price_points)
+        if len(price_points) < span:
+            break
+        newest_timestamp = max(point['timestamp'] for point in price_points)
+        next_cursor = newest_timestamp + 86400
+        if next_cursor <= cursor_timestamp:
+            break
+        cursor_timestamp = next_cursor
+    if not all_prices:
+        print(f"...DeFiLlama has no price history for {token_address} on {chain}")
+        return None
+    return all_prices
+
+
+# Attempt to fetch data from Geckoterminal, DeFiLama or Moralis (alternatively).
+# Three sources are required, since each has different coverage and historical depth limits + API key restrictions.
+# Prices are queried either via Geckoterminal, or DeFiLama or Moralis, depending on the date of this pool, because Geckoterminal
+# gives prices not later than 180 days under demo API key, and DeFiLama gives only daily prices
+def try_geckoterminal_defilama_or_moralis(chain, token_address, window_start, window_end, top_pool_adr, earliest_pool_adr,
+                                          top_token_side, earliest_token_side):
     if earliest_pool_adr is None:
         return None, None
     age_seconds = int(time.time()) - window_start
@@ -245,13 +286,19 @@ def try_geckoterminal_or_moralis(chain, token_address, window_start, window_end,
         prices = transform_candles_to_prices(candles)
         price_source = 'geckoterminal'
     else:
-        print(f"...Time window is before GeckoTerminal's depth limit, searching the earliest pool {earliest_pool_adr} in Moralis")
-        # Get aggregated prices for a Moralis pair
-        # Reference: https://docs.moralis.com/data-api/evm/price/ohlc
-        prices, had_failure = get_prices_moralis_pair(chain, earliest_pool_adr, window_start, window_end)
-        if had_failure or not prices:
-            return None, None
-        price_source = 'moralis'
+        print(f"...Time window is before GeckoTerminal's depth limit, trying DeFiLlama for {token_address}")
+        # DeFiLlama has free daily history, but covers only tokens it tracks
+        prices = get_prices_defillama(chain, token_address, window_start, window_end)
+        if prices:
+            price_source = 'defillama'
+        else:
+            print(f"...Searching the earliest pool {earliest_pool_adr} in Moralis")
+            # Get aggregated prices for a Moralis pair
+            # Reference: https://docs.moralis.com/data-api/evm/price/ohlc
+            prices, had_failure = get_prices_moralis_pair(chain, earliest_pool_adr, window_start, window_end)
+            if had_failure or not prices:
+                return None, None
+            price_source = 'moralis'
     return prices, price_source
 
 
@@ -278,7 +325,7 @@ def get_max_price_quarters_live(chain, token_address, deployment_timestamp, wind
         print(f"...CoinGecko data for {token_address} on {chain} doesn't cover Q1/Q2, trying other sources")
     else:
         print(f"...CoinGecko has no data for {token_address} on {chain}")
-    prices, price_source = try_geckoterminal_or_moralis(chain, token_address, window_start, window_end, top_pool_adr, earliest_pool_adr, top_token_side, earliest_token_side)
+    prices, price_source = try_geckoterminal_defilama_or_moralis(chain, token_address, window_start, window_end, top_pool_adr, earliest_pool_adr, top_token_side, earliest_token_side)
     if prices is None:
         return {'MaxPrice (Quarter 1)': math.nan, 'MaxPrice (Quarter 2)': math.nan, 'price_source': None, 'window_start': window_start}
     result = compute_quarters(prices, window_start, window_end, price_source)

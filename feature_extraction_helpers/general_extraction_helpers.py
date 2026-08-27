@@ -9,6 +9,7 @@
 # - CoinGeckoTerminal
 # - Moralis
 # - DEXScreener
+# - DeFiLama
 
 import time
 
@@ -21,7 +22,7 @@ from feature_extraction_helpers.config import ETHERSCAN_TIME_INTERVAL, ETHERSCAN
     COINGECKO_API_KEY, GECKOTERMINAL_TIME_INTERVAL, GECKOTERMINAL_BASE_URL, MORALIS_TIME_INTERVAL, MORALIS_API_KEY, \
     MORALIS_BASE_URL, NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE, DEXSCREENER_BASE_URL, ETHERSCAN_MAX_RETRIES, \
     ETHERSCAN_RETRY_DELAY_SECONDS, GECKOTERMINAL_MAX_RETRIES, GECKOTERMINAL_RETRY_DELAY_SECONDS, MORALIS_MAX_RETRIES, \
-    MORALIS_RETRY_DELAY_SECONDS
+    MORALIS_RETRY_DELAY_SECONDS, DEFILLAMA_TIME_INTERVAL, DEFILLAMA_BASE_URL
 
 # Based on TM-RugPull methodology
 LIVE_THRESHOLD_HOURS = 72
@@ -181,6 +182,21 @@ def query_dexscreener(endpoint):
         return None
     if response.status_code != 200:
         print(f"...HTTP error {response.status_code} for DEXScreener endpoint {endpoint}")
+        return None
+    return response.json()
+
+
+# General function to query DeFiLlama's public price API
+# Reference: https://defillama.com/docs/api
+def query_defillama(endpoint, params=None):
+    wait_for_rate_limit('defillama', DEFILLAMA_TIME_INTERVAL)
+    try:
+        response = SESSION.get(f"{DEFILLAMA_BASE_URL}{endpoint}", params=params or {}, timeout=30)
+    except requests.RequestException as e:
+        print(f"...Request error for DeFiLlama endpoint {endpoint}: {e}")
+        return None
+    if response.status_code != 200:
+        print(f"...HTTP error {response.status_code} for DeFiLlama endpoint {endpoint}: {response.text[:200]}")
         return None
     return response.json()
 

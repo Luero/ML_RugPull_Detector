@@ -26,6 +26,11 @@ BLOCKSCOUT_BASE_URLS = {
     "ARBI": "https://arbitrum.blockscout.com",
     "POLYGON": "https://polygon.blockscout.com",
 }
+# Used for prices extraction, no historical limit, but only daily prices available
+# Reference: https://defillama.com/docs/api
+DEFILLAMA_BASE_URL = 'https://coins.llama.fi'
+# Maximum number of daily points per /chart call (found empirically)
+DEFILLAMA_MAX_SPAN = 500
 
 # Off-chain features
 # https://serpapi.com/search-api
@@ -73,6 +78,9 @@ GECKOTERMINAL_NETWORK_IDS = {'ETH': 'eth', 'BSC': 'bsc', 'POLYGON': 'polygon_pos
 # IDs of chains suppported by DEXScreener
 DEXSCREENER_CHAIN_IDS = {'ETH': 'ethereum', 'BSC': 'bsc', 'POLYGON': 'polygon', 'ARBI': 'arbitrum'}
 
+# IDs of chains supported by DeFiLama
+DEFILLAMA_CHAIN_IDS = {'ETH': 'ethereum', 'BSC': 'bsc', 'POLYGON': 'polygon', 'ARBI': 'arbitrum'}
+
 # Historical data available only for 180 days in the past for demo API key
 GECKOTERMINAL_MAX_DEPTH_SECONDS = 180 * 24 * 3600
 
@@ -96,6 +104,8 @@ COINGECKO_TIME_INTERVAL = 0.65
 GECKOTERMINAL_TIME_INTERVAL = 2.1
 # Depends on CU (computing units)
 MORALIS_TIME_INTERVAL = 0.15
+# No hard published limit, but small interval used to be safe
+DEFILLAMA_TIME_INTERVAL = 0.15
 
 
 # Mapping between blockchain and consensus type

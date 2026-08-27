@@ -17,7 +17,7 @@ def scan_token(predictor, chain, token_address):
 
 def main():
     predictor = Predictor()
-    print(scan_token(predictor, 'ARBI', '0x040d1edc9569d4bab2d15287dc5a4f10f56a56b8'))
+    print(scan_token(predictor, 'ETH', '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9'))
 
 
 if __name__ == "__main__":
@@ -53,6 +53,7 @@ if __name__ == "__main__":
 # 'ARBI', '0xa0b862F60edEf4452F25B4160F177db44DeB6Cf1' - GNO, big one
 # 'POLYGON', '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC' - small and recent - None, no socials found
 # 'ETH', '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984' - Uniswap, big and old
+# 'ETH', '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9' - AAVE, old and big
 
 # From onchain_extractor_helper
 # 'BSC', '0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00' - PEPE, more than 2 mln transactions
