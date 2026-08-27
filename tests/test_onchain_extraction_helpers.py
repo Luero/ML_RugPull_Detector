@@ -88,14 +88,16 @@ def test_get_number_of_transactions_bsc(monkeypatch):
 @pytest.mark.parametrize("chain, payload, expected", [
     # For ETH tokens count comes from Blockscout counters
     ('ETH', {'transfers_count': '1', 'token_holders_count': '678'}, 678),
-    # For BSC tokens count comes from Moralis holder stats
-    ('BSC', {'totalHolders': 4321}, 4321),
-    # for BSC with a failed Moralis call count is a missing value
+    # For BSC tokens count comes from NodeReal
+    ('BSC', {'result': hex(4321)}, 4321),
+    # for BSC with a failed NodeReal call count is a missing value
     ('BSC', None, None),
+    # for BSC with an invalid NodeReal response is a missing value
+    ('BSC', {'unexpected': 'shape'}, None),
 ])
 def test_get_current_token_holder_count(monkeypatch, chain, payload, expected):
     monkeypatch.setattr(onchain, 'get_token_counters', lambda c, addr: payload)
-    monkeypatch.setattr(onchain, 'query_moralis', lambda endpoint, params: payload)
+    monkeypatch.setattr(onchain, 'query_meganode', lambda method, params: payload)
     assert onchain.get_current_token_holder_count(chain, '0xabc') == expected
 
 

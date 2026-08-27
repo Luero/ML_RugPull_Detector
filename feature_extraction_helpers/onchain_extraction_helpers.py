@@ -137,19 +137,14 @@ def get_current_token_holder_count(chain, token_address):
     return int(holders_count)
 
 
-# Extract token holder count ('Number of holders') at the time of query for BSC tokens, uses Moralis free API with indexed number
-# Reference: https://docs.moralis.com/data-api/evm/token/holders/token-holder-stats
+# Extract token holder count ('Number of holders') at the time of query for BSC tokens, uses NodeReal
+# Reference: https://docs.nodereal.io/reference/nr_gettokenholdercount
 def get_current_token_holder_count_bsc(token_address):
-    moralis_chain = MORALIS_CHAIN_IDS.get('BSC')
-    data = query_moralis(f"/erc20/{token_address}/holders", {"chain": moralis_chain})
-    if data is None:
-        print(f"...No holder data for {token_address}")
+    result = query_meganode('nr_getTokenHolderCount', [token_address])
+    if result is None or not isinstance(result.get('result'), str):
+        print(f"...No NodeReal holder count for {token_address}")
         return None
-    total_holders = data.get("totalHolders")
-    if total_holders is None:
-        print(f"...No totalHolders field for {token_address}")
-        return None
-    return int(total_holders)
+    return int(result['result'], 16)
 
 
 def get_onchain_features_live(chain, token_address, deployment_block, deployment_timestamp, latest_block, latest_block_timestamp, last_activity_timestamp):

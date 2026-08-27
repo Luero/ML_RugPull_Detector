@@ -1,8 +1,15 @@
 # Mocked environment for offline testing (replaces HTTP and XGBoost model) in order for tests to be deterministic
 
 import json
+from datetime import datetime, timezone
 
 import requests
+import feature_extraction_module.feature_extractor as extractor_module
+
+
+VALID_ADDRESS = '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC'
+DEPLOYMENT_TS = int(datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp())
+LATEST_TS = datetime(2025, 6, 1, tzinfo=timezone.utc)
 
 
 # Single HTTP response
@@ -56,3 +63,27 @@ def make_pool(token_address, side, reserve, created_at, pool_address):
             'quote_token': {'data': {'id': token_id if side == 'quote' else 'eth_0xother'}},
         },
     }
+
+
+# Imitates feature extraction for each group of features
+def make_mock_extraction(monkeypatch, context_calls):
+    monkeypatch.setattr(extractor_module, 'get_latest_block_with_timestamp',
+                        lambda chain: (context_calls.append('latest'), (70000000, LATEST_TS))[1])
+    monkeypatch.setattr(extractor_module, 'get_deployment_block_and_timestamp',
+                        lambda chain, addr: (context_calls.append('deployment'), (60000000, DEPLOYMENT_TS))[1])
+    monkeypatch.setattr(extractor_module, 'get_last_activity_timestamp',
+                        lambda chain, addr, latest, dep: (context_calls.append('activity'), int(LATEST_TS.timestamp()) - 3600)[1])
+    monkeypatch.setattr(extractor_module, 'get_max_price_quarters_live',
+                        lambda chain, addr, dep_ts, window_end: {'MaxPrice (Quarter 1)': 2.5, 'MaxPrice (Quarter 2)': 3.5,
+                                                                 'price_source': 'coingecko', 'window_start': DEPLOYMENT_TS + 100})
+    monkeypatch.setattr(extractor_module, 'get_onchain_features_live',
+                        lambda *args: {'project period (days)': 151, 'the number of Transactions': 116,
+                                       'Number of holders': 9, 'Blockchain Type': 'POS',
+                                       'Holders_12h': 1, 'Holders_24h': 1})
+    monkeypatch.setattr(extractor_module, 'get_source_code_features_live',
+                        lambda chain, addr: {'has_contract_swap_patterns': 0, 'has_owner_guard': 1})
+    monkeypatch.setattr(extractor_module, 'get_osint_features_live',
+                        lambda chain, addr, trading_start, window_end: {
+                            'Google results for project website (first day)': 633000,
+                            'Google results for project x profile (first days)': 0,
+                            'Google results for project x profile (duration/2)': None})
