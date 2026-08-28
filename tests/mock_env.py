@@ -2,6 +2,7 @@
 
 import json
 from datetime import datetime, timezone
+import numpy as np
 
 import requests
 import feature_extraction_module.feature_extractor as extractor_module
@@ -87,3 +88,32 @@ def make_mock_extraction(monkeypatch, context_calls):
                             'Google results for project website (first day)': 633000,
                             'Google results for project x profile (first days)': 0,
                             'Google results for project x profile (duration/2)': None})
+
+
+# Imitates XGBClassifier, returns scam probability and contributions for each feature
+class MockXGBClassifier:
+    # Set by tests after object initiation
+    scam_probability = 0.9
+    contributions = None
+    captured_inputs = []
+    # matches the winning model
+    n_features_in_ = 14
+
+    def load_model(self, path):
+        self.loaded_from = path
+
+    def predict_proba(self, X):
+        MockXGBClassifier.captured_inputs.append(X)
+        return np.array([[1 - MockXGBClassifier.scam_probability, MockXGBClassifier.scam_probability]])
+
+    def get_booster(self):
+        return MockBooster()
+
+
+class MockBooster:
+    def predict(self, dmatrix, pred_contribs=False):
+        assert pred_contribs
+        contribs = MockXGBClassifier.contributions
+        if contribs is None:
+            contribs = np.zeros(15)
+        return np.array([contribs])
