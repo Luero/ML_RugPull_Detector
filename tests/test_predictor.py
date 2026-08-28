@@ -111,9 +111,8 @@ def test_inconsistent_column_order_in_preprocessor(tmp_path):
                   preprocessing_path=str(broken_path))
 
 
-# Tests that a real dataset row produces probability score and a label is
-# consistent with the threshold
-def test_real_model_predictoin(real_predictor, dataset):
+# Tests that a real dataset row produces probability score and a label is consistent with the threshold
+def test_real_model_prediction(real_predictor, dataset):
     raw_columns = real_predictor.numeric_cols + real_predictor.categorical_cols
     features = {col: dataset.iloc[0][col] for col in raw_columns}
     result = real_predictor.predict(features)

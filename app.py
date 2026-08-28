@@ -1,7 +1,11 @@
+# TODO: general app comment
+
 from feature_extraction_module.feature_extractor import FeatureExtractor
 from prediction_module.predictor import Predictor
 
+# TODO: test enrichment scripts
 
+# TODO: test method and move it to other layer (prediction module??)
 # Small function to check wiring between Extractor and Predictor
 def scan_token(predictor, chain, token_address):
     extraction = FeatureExtractor(chain, token_address).extract_features()
