@@ -53,8 +53,8 @@ def test_prepare_model_input_imputes_none_values(real_predictor, live_features):
 
 # Tests classification threshold (0.85), boundary is inclusive
 @pytest.mark.parametrize("scam_probability, expected_prediction", [
-    (0.84, 'normal'),   # right before 0.85
-    (0.85, 'scam'),     # exactly at the threshold
+    (0.57, 'normal'),   # right before 0.58
+    (0.58, 'scam'),     # exactly at the threshold
     (0.99, 'scam'),     # clearly over the threshold
 ])
 def test_predict_threshold(mock_model_predictor, live_features, scam_probability, expected_prediction):

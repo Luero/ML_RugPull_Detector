@@ -12,8 +12,9 @@ MODEL_PATH = 'prediction_module/models/xgboost_model.json'
 PREPROCESSING_PATH = 'prediction_module/models/preprocessing.joblib'
 
 # Probability threshold to convert scam probability into class
-# 0.85 is chosen to reduce false positive results and ensure that system reports scam only if it has valid grounds to do so
-PREDICTION_THRESHOLD = 0.85
+# 0.58 was found empirically by deriving a threshold that maximises F1 from cross-validated training predictions
+# (see 'Experimentation pipeline and model training.ipyng')
+PREDICTION_THRESHOLD = 0.58
 
 # Number of top risk signals returned with a prediction
 TOP_RISK_SIGNALS_COUNT = 3
