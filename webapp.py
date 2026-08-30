@@ -12,4 +12,5 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Port 5001 (5000 is used by macOS)
+    app.run(debug=True, port=5001)
