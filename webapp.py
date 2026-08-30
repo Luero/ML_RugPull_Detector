@@ -1,9 +1,11 @@
 # UI for the rug-pull detector
 
+import math
 import re
 import threading
 import uuid
 
+import numpy as np
 from flask import Flask, render_template, request, jsonify
 
 from app import scan_token
@@ -47,12 +49,22 @@ def start_prediction():
     return jsonify({'job_id': job_id}), 202
 
 
+# Returns info about queried prediction (status and result once completed)
+@app.route('/api/predict/<job_id>')
+def get_prediction_status(job_id):
+    job = scan_jobs.get(job_id)
+    if job is None:
+        return jsonify({'error': 'Unknown job id'}), 404
+    return jsonify(job)
+
+
 # Makes a prediction on background thread
 def calculate_prediction(job_id, chain, token_address):
     print(f'Scan {job_id} started for {chain} {token_address}')
     try:
         result = scan_token(predictor, chain, token_address)
         result['risk_band'] = get_risk_band(result['scam_probability'])
+        scan_jobs[job_id]['result'] = make_json_safe(result)
         scan_jobs[job_id]['status'] = 'done'
         print(f'Scan {job_id} finished: {result["prediction"]} ({result["scam_probability"]})')
     except Exception as error:
@@ -70,6 +82,21 @@ def get_risk_band(scam_probability):
     if scam_probability >= SUSPICION_THRESHOLD:
         return 'suspicious'
     return 'low'
+
+
+# NaN is not valid JSON and numpy values may produce errors or nulls, so result should be cleared before returning
+def make_json_safe(value):
+    if isinstance(value, dict):
+        return {key: make_json_safe(inner) for key, inner in value.items()}
+    if isinstance(value, list):
+        return [make_json_safe(inner) for inner in value]
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        value = float(value)
+    if isinstance(value, float) and math.isnan(value):
+        return None
+    return value
 
 
 if __name__ == '__main__':
