@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 
 import feature_extraction_helpers.general_extraction_helpers as general_helpers
+import webapp
 from tests.mock_env import MockXGBClassifier
 import prediction_module.predictor as predictor_module
 
@@ -69,3 +70,17 @@ def mock_model_predictor(monkeypatch):
     return predictor_module.Predictor(
         model_path=str(PROJECT_ROOT / 'prediction_module' / 'models' / 'xgboost_model.json'),
         preprocessing_path=str(PROJECT_ROOT / 'prediction_module' / 'models' / 'preprocessing.joblib'))
+
+
+# Clean jobs created for other tests, to start each test fresh
+@pytest.fixture(autouse=True)
+def clean_scan_jobs():
+    webapp.scan_jobs.clear()
+    yield
+    webapp.scan_jobs.clear()
+
+
+# Creates a test client for a web part
+@pytest.fixture
+def client():
+    return webapp.app.test_client()
