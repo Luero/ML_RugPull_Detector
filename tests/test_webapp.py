@@ -16,6 +16,15 @@ def test_index_page_is_served(client):
     response = client.get('/')
     assert response.status_code == 200
     assert b'Rug-Pull Detector' in response.data
+    for element_id in [b'id="predict-form"', b'id="chain"', b'id="token-address"', b'id="predict-button"',
+                       b'id="progress"', b'id="error-box"', b'id="result"', b'id="risk-signals"',
+                       b'id="missing-warning"', b'id="features-table"']:
+        assert element_id in response.data
+    assert str(webapp.PREDICTION_THRESHOLD).encode() in response.data
+    assert str(webapp.SUSPICION_THRESHOLD).encode() in response.data
+    # A band legend shows boundaries in %, matching how the probability is displayed
+    assert str(round(webapp.SUSPICION_THRESHOLD * 100)).encode() + b'%' in response.data
+    assert str(round(webapp.PREDICTION_THRESHOLD * 100)).encode() + b'%' in response.data
 
 
 # Tests that invalid input is rejected and returns code 400
@@ -104,6 +113,13 @@ def test_get_prediction_status_unknown_job_id(client):
 ])
 def test_get_risk_band(scam_probability, band):
     assert webapp.get_risk_band(scam_probability) == band
+
+
+# Tests that JS scripts call same endpoints the server exposes
+def test_index_page_script_calls_existing_api_routes(client):
+    response = client.get('/')
+    assert b"fetch('/api/predict'" in response.data
+    assert b"fetch('/api/predict/' + jobId)" in response.data
 
 
 # Raising error for a failed prediction

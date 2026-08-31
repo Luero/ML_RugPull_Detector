@@ -102,4 +102,4 @@ def make_json_safe(value):
 
 if __name__ == '__main__':
     # Port 5001 (5000 is used by macOS)
-    app.run(debug=True, port=5001)
+    app.run(port=5001)
