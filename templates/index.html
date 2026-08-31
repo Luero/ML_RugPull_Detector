@@ -1,4 +1,3 @@
-<!--Reference to colour codes: https://htmlcolorcodes.com/-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,13 +9,13 @@
         h1 { margin-bottom: 4px; }
         .subtitle { color: #cbd3ec; margin-top: 0; }
 
-        .scan-form { display: flex; gap: 8px; margin: 24px 0 30px; }
+        .predict-form { display: flex; gap: 8px; margin: 24px 0 30px; }
         select, input, button { font-size: 15px; padding: 9px 10px; border: 1px solid #2a3b6e; border-radius: 6px;
                                 background: #0b1630; color: #cbd3ec; }
         #token-address { flex: 1; font-family: 'SF Mono', Menlo, Consolas, monospace; }
         #token-address::placeholder { color: #5a6a9a; }
-        #scan-button { background: #5471d1; color: white; border: none; cursor: pointer; padding: 9px 22px; }
-        #scan-button:disabled { background: #a8b8ed; cursor: default; }
+        #predict-button { background: #5471d1; color: white; border: none; cursor: pointer; padding: 9px 22px; }
+        #predict-button:disabled { background: #a8b8ed; cursor: default; }
 
         .bands-legend { display: flex; gap: 6px; font-size: 12.5px; color: #0b1630; margin-bottom: 24px; }
         .bands-legend span { padding: 5px 8px; border-radius: 10px; }
@@ -63,7 +62,7 @@
     <h1>Rug-Pull Detector</h1>
     <p class="subtitle">ML-based rug-pull detector for ETH, BSC, POLYGON and ARBI tokens</p>
 
-    <form id="scan-form" class="scan-form">
+    <form id="predict-form" class="predict-form">
         <select id="chain">
             <option>ETH</option>
             <option>BSC</option>
@@ -72,44 +71,168 @@
         </select>
         <input id="token-address" placeholder="Token contract address (0x…)" required
                pattern="0x[0-9a-fA-F]{40}" title="0x followed by 40 hex characters">
-        <button id="scan-button" type="submit">Predict</button>
+        <button id="predict-button" type="submit">Predict</button>
     </form>
     <div class="bands-legend">
-        <span class="chip-low">low risk &lt; {{ suspicion_threshold }}</span>
-        <span class="chip-suspicious">suspicious {{ suspicion_threshold }}&ndash;{{ prediction_threshold }}</span>
-        <span class="chip-high">high risk &ge; {{ prediction_threshold }}</span>
+{#        Displaying in % for consistency with predicted probability#}
+        <span class="chip-low">low risk &lt; {{ (suspicion_threshold * 100) | round | int }}%</span>
+        <span class="chip-suspicious">suspicious {{ (suspicion_threshold * 100) | round | int }}&ndash;{{ (prediction_threshold * 100) | round | int }}%</span>
+        <span class="chip-high">high risk &ge; {{ (prediction_threshold * 100) | round | int }}%</span>
     </div>
 
-<!--    TODO: add necessary behaviour later -->
+    <div id="progress" class="hidden"><span class="spinner"></span>Scanning&hellip; features are extracted live
+        from blockchain explorer and price sources, it could take up to several minutes for popular tokens.
+        Elapsed: <span id="elapsed">0:00</span></div>
 
-    <div id="progress"><span class="spinner"></span>Scanning&hellip; features are extracted live
-        from blockchain explorer and price sources, it could take up to several minutes.
-        Elapsed: <span id="elapsed">1:23</span></div>
+    <div id="error-box" class="hidden"></div>
 
-    <div id="error-box">The token could not be scanned: No contract deployment found</div>
-
-    <div id="result" class="band-high">
-        <div id="band-label">High risk</div>
-        <p id="probability-line">Scam probability: 96.5%, model prediction: scam (classification threshold 0.58)</p>
-        <p id="scanned-token">ARBI · 0xd58D345Fd9c82262E087d2D0607624B410D88242</p>
-        <div id="risk-signals-block">
+    <div id="result" class="hidden">
+        <div id="band-label"></div>
+        <p id="probability-line"></p>
+        <p id="scanned-token"></p>
+        <div id="risk-signals-block" class="hidden">
             <h3>Top risk signals</h3>
-            <ul id="risk-signals">
-                <li>Current number of token holders <span class="signal-value">, extracted value: 9</span></li>
-                <li>Total number of token transfers <span class="signal-value">, extracted value: 116</span></li>
-                <li>Number of holders 24 hours after deployment <span class="signal-value">, extracted value: 1</span></li>
-            </ul>
+            <ul id="risk-signals"></ul>
         </div>
-        <div id="missing-warning">2 feature(s) could not be extracted and were imputed:
-            MaxPrice (Quarter 1), MaxPrice (Quarter 2)</div>
-        <details id="features-block" open>
+        <div id="missing-warning" class="hidden"></div>
+        <details id="features-block">
             <summary>Extracted features</summary>
-            <table id="features-table">
-                <tr><td>Blockchain</td><td>ARBI</td></tr>
-                <tr><td>Number of holders</td><td>9</td></tr>
-                <tr><td>MaxPrice (Quarter 1)</td><td>—</td></tr>
-            </table>
+            <table id="features-table"></table>
         </details>
     </div>
+
+    <script>
+        const PREDICTION_THRESHOLD = {{ prediction_threshold }};
+        const CHECK_INTERVAL_MS = 3000;
+        const BAND_LABELS = {low: 'Low risk', suspicious: 'Suspicious', high: 'High risk'};
+
+        const form = document.getElementById('predict-form');
+        const predictButton = document.getElementById('predict-button');
+        const progress = document.getElementById('progress');
+        const errorBox = document.getElementById('error-box');
+        const result = document.getElementById('result');
+
+        let checkTimer = null;
+        let elapsedTimer = null;
+
+        form.addEventListener('submit', startPrediction);
+
+        // Starts prediction when a user press a 'Predict' button
+        async function startPrediction(event) {
+            event.preventDefault();
+            hideAll();
+            const chain = document.getElementById('chain').value;
+            const tokenAddress = document.getElementById('token-address').value.trim();
+            let response;
+            try {
+                response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({chain: chain, token_address: tokenAddress}),
+                });
+            } catch (networkError) {
+                showError('Could not reach the server.');
+                return;
+            }
+            const payload = await response.json();
+            if (!response.ok) {
+                showError(payload.error);
+                return;
+            }
+            setPrediction(true);
+            checkTimer = setInterval(() => checkJob(payload.job_id), CHECK_INTERVAL_MS);
+        }
+
+        // Checks a status of prediction (whether it is finished or not)
+        async function checkJob(jobId) {
+            let job;
+            try {
+                const response = await fetch('/api/predict/' + jobId);
+                job = await response.json();
+            } catch (networkError) {
+                // keep checking, scan is still running
+                return;
+            }
+            if (job.status === 'running') return;
+            setPrediction(false);
+            if (job.status === 'failed') {
+                showError('Scan failed: ' + job.error);
+            } else if (job.result.error !== null) {
+                showError('The token could not be scanned: ' + job.result.error);
+            } else {
+                showResult(job);
+            }
+        }
+
+        // Display results, including scam probability, risk band, a label and key risk signals, if any
+        function showResult(job) {
+            result.className = 'band-' + job.result.risk_band;
+            document.getElementById('band-label').textContent = BAND_LABELS[job.result.risk_band];
+            document.getElementById('probability-line').textContent =
+                'Scam probability: ' + (job.result.scam_probability * 100).toFixed(1) + '%'
+                + ', ' + job.result.prediction;
+            document.getElementById('scanned-token').textContent = job.chain + ' · ' + job.token_address;
+
+            const signalsBlock = document.getElementById('risk-signals-block');
+            const signalsList = document.getElementById('risk-signals');
+            signalsList.replaceChildren();
+            for (const signal of job.result.risk_signals) {
+                const item = document.createElement('li');
+                item.textContent = signal.description;
+                const value = document.createElement('span');
+                value.className = 'signal-value';
+                value.textContent = ', extracted value: ' + signal.value;
+                item.appendChild(value);
+                signalsList.appendChild(item);
+            }
+            // Top 3 risks for tokens with 'low risk' are not displayed to a user, since it may be confusing
+            signalsBlock.classList.toggle('hidden', job.result.risk_signals.length === 0 || job.result.risk_band === 'low');
+
+            const missingWarning = document.getElementById('missing-warning');
+            missingWarning.textContent = job.result.missing_features.length
+                + ' feature(s) could not be extracted and were imputed: '
+                + job.result.missing_features.join(', ');
+            missingWarning.classList.toggle('hidden', job.result.missing_features.length === 0);
+
+            const featuresTable = document.getElementById('features-table');
+            featuresTable.replaceChildren();
+            for (const [feature, value] of Object.entries(job.result.features)) {
+                const row = featuresTable.insertRow();
+                row.insertCell().textContent = feature;
+                row.insertCell().textContent = value === null ? '—' : value;
+            }
+            result.classList.remove('hidden');
+        }
+
+        // Run a timer while the system scans a queried token to make a prediction
+        function setPrediction(scanning) {
+            // prevents a second scan from a double click on a 'Predict' button
+            predictButton.disabled = scanning;
+            progress.classList.toggle('hidden', !scanning);
+            if (scanning) {
+                const startedAt = Date.now();
+                elapsedTimer = setInterval(() => {
+                    const seconds = Math.floor((Date.now() - startedAt) / 1000);
+                    document.getElementById('elapsed').textContent =
+                        Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+                }, 1000);
+            } else {
+                clearInterval(checkTimer);
+                clearInterval(elapsedTimer);
+            }
+        }
+
+        // Display errors to the user when relevant
+         function showError(message) {
+            errorBox.textContent = message;
+            errorBox.classList.remove('hidden');
+        }
+
+        // Hide elements when they are not relevant to the user
+        function hideAll() {
+            errorBox.classList.add('hidden');
+            result.classList.add('hidden');
+        }
+    </script>
 </body>
 </html>
