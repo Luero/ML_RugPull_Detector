@@ -1,3 +1,4 @@
+<!--Reference to colour codes: https://htmlcolorcodes.com/-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,6 +23,40 @@
         .chip-low { background: #91d47d; }
         .chip-suspicious { background: #d4d07d; }
         .chip-high { background: #d48a7d; }
+
+        .hidden { display: none; }
+        #progress { color: #cbd3ec; padding: 14px 16px; background: #0b1630; border-radius: 8px; margin-bottom: 16px; }
+        .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid #5471d1;
+                   border-top-color: transparent; border-radius: 50%; margin-right: 8px;
+                   vertical-align: -2px; animation: spin 0.9s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #error-box { padding: 14px 16px; background: #2b1210; border-radius: 8px; color: #d48a7d; margin-bottom: 16px; }
+
+        #result { border-radius: 10px; padding: 18px 20px; background: #0b1630; border: 1px solid #2a3b6e; border-left: 8px solid #5a6a9a; }
+        #result.band-low { border-left-color: #91d47d; }
+        #result.band-suspicious { border-left-color: #d4d07d; }
+        #result.band-high { border-left-color: #d48a7d; }
+        #band-label { font-size: 22px; font-weight: 700; }
+        #result.band-low #band-label { color: #91d47d; }
+        #result.band-suspicious #band-label { color: #d4d07d; }
+        #result.band-high #band-label { color: #d48a7d; }
+        #probability-line { color: #cbd3ec; margin: 6px 0 0; }
+        #scanned-token { color: #5a6a9a; font-size: 13px; font-family: 'SF Mono', Menlo, Consolas, monospace; margin: 2px 0 0; }
+
+        #risk-signals-block h3, #features-block { margin-top: 18px; }
+        #risk-signals-block h3 { color: #cbd3ec; }
+        #risk-signals { margin: 6px 0 0; padding-left: 20px; }
+        #risk-signals li { margin-bottom: 4px; }
+        #risk-signals .signal-value { color: #5a6a9a; }
+
+        #missing-warning { margin-top: 14px; padding: 10px 12px; background: #2c2610; border-radius: 6px;
+                           font-size: 13.5px; color: #d4d07d; }
+
+        #features-block summary { cursor: pointer; color: #a8b8ed; font-size: 14px; }
+        #features-table { border-collapse: collapse; margin-top: 8px; font-size: 13.5px; width: 100%; }
+        #features-table td { border-bottom: 1px solid #1c2540; padding: 4px 8px 4px 0; }
+        #features-table td:last-child { font-family: 'SF Mono', Menlo, Consolas, monospace; text-align: right; color: #cbd3ec; }
     </style>
 </head>
 <body>
@@ -43,6 +78,38 @@
         <span class="chip-low">low risk &lt; {{ suspicion_threshold }}</span>
         <span class="chip-suspicious">suspicious {{ suspicion_threshold }}&ndash;{{ prediction_threshold }}</span>
         <span class="chip-high">high risk &ge; {{ prediction_threshold }}</span>
+    </div>
+
+<!--    TODO: add necessary behaviour later -->
+
+    <div id="progress"><span class="spinner"></span>Scanning&hellip; features are extracted live
+        from blockchain explorer and price sources, it could take up to several minutes.
+        Elapsed: <span id="elapsed">1:23</span></div>
+
+    <div id="error-box">The token could not be scanned: No contract deployment found</div>
+
+    <div id="result" class="band-high">
+        <div id="band-label">High risk</div>
+        <p id="probability-line">Scam probability: 96.5%, model prediction: scam (classification threshold 0.58)</p>
+        <p id="scanned-token">ARBI · 0xd58D345Fd9c82262E087d2D0607624B410D88242</p>
+        <div id="risk-signals-block">
+            <h3>Top risk signals</h3>
+            <ul id="risk-signals">
+                <li>Current number of token holders <span class="signal-value">, extracted value: 9</span></li>
+                <li>Total number of token transfers <span class="signal-value">, extracted value: 116</span></li>
+                <li>Number of holders 24 hours after deployment <span class="signal-value">, extracted value: 1</span></li>
+            </ul>
+        </div>
+        <div id="missing-warning">2 feature(s) could not be extracted and were imputed:
+            MaxPrice (Quarter 1), MaxPrice (Quarter 2)</div>
+        <details id="features-block" open>
+            <summary>Extracted features</summary>
+            <table id="features-table">
+                <tr><td>Blockchain</td><td>ARBI</td></tr>
+                <tr><td>Number of holders</td><td>9</td></tr>
+                <tr><td>MaxPrice (Quarter 1)</td><td>—</td></tr>
+            </table>
+        </details>
     </div>
 </body>
 </html>
