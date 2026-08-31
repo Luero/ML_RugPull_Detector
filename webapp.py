@@ -24,10 +24,11 @@ TOKEN_ADDRESS_PATTERN = re.compile(r'0x[0-9a-fA-F]{40}')
 scan_jobs = {}
 
 
-# Main page of UI
+# Main and single page of UI
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', prediction_threshold=PREDICTION_THRESHOLD,
+                           suspicion_threshold=SUSPICION_THRESHOLD)
 
 
 # Starts to calculate prediction and returns job id to further check status, since scanning a queried token can be

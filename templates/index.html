@@ -3,9 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <title>Rug-Pull Detector</title>
+    <style>
+        body { font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+               max-width: 720px; margin: 40px auto; padding: 0 16px; color: #7d92d4; background: #020917; }
+        h1 { margin-bottom: 4px; }
+        .subtitle { color: #cbd3ec; margin-top: 0; }
+
+        .scan-form { display: flex; gap: 8px; margin: 24px 0 30px; }
+        select, input, button { font-size: 15px; padding: 9px 10px; border: 1px solid #2a3b6e; border-radius: 6px;
+                                background: #0b1630; color: #cbd3ec; }
+        #token-address { flex: 1; font-family: 'SF Mono', Menlo, Consolas, monospace; }
+        #token-address::placeholder { color: #5a6a9a; }
+        #scan-button { background: #5471d1; color: white; border: none; cursor: pointer; padding: 9px 22px; }
+        #scan-button:disabled { background: #a8b8ed; cursor: default; }
+
+        .bands-legend { display: flex; gap: 6px; font-size: 12.5px; color: #0b1630; margin-bottom: 24px; }
+        .bands-legend span { padding: 5px 8px; border-radius: 10px; }
+        .chip-low { background: #91d47d; }
+        .chip-suspicious { background: #d4d07d; }
+        .chip-high { background: #d48a7d; }
+    </style>
 </head>
 <body>
     <h1>Rug-Pull Detector</h1>
-    <p>Server is up and running</p>
+    <p class="subtitle">ML-based rug-pull detector for ETH, BSC, POLYGON and ARBI tokens</p>
+
+    <form id="scan-form" class="scan-form">
+        <select id="chain">
+            <option>ETH</option>
+            <option>BSC</option>
+            <option>POLYGON</option>
+            <option>ARBI</option>
+        </select>
+        <input id="token-address" placeholder="Token contract address (0x…)" required
+               pattern="0x[0-9a-fA-F]{40}" title="0x followed by 40 hex characters">
+        <button id="scan-button" type="submit">Predict</button>
+    </form>
+    <div class="bands-legend">
+        <span class="chip-low">low risk &lt; {{ suspicion_threshold }}</span>
+        <span class="chip-suspicious">suspicious {{ suspicion_threshold }}&ndash;{{ prediction_threshold }}</span>
+        <span class="chip-high">high risk &ge; {{ prediction_threshold }}</span>
+    </div>
 </body>
 </html>

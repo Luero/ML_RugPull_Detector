@@ -24,7 +24,7 @@ RISK_SIGNAL_DESCRIPTIONS = {
     'MaxPrice (Quarter 1)': "Maximum price during the first quarter of the project's observed lifetime",
     'MaxPrice (Quarter 2)': "Maximum price during the second quarter of the project's observed lifetime",
     'the number of Transactions': 'Total number of token transfers',
-    'Number of holders': 'Current number of token holders',
+    'Number of holders': 'Number of token holders',
     'Google results for project website (first day)': "Number of Google search results for the project's website at the first day of trading activity",
     'Google results for project x profile (first days)': "Number of Google search results for the project's X profile at the first day of trading activity",
     'Google results for project x profile (duration/2)': "Number of Google search results for the project's X profile at the project's lifetime midpoint",
