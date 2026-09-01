@@ -14,8 +14,8 @@ from datetime import datetime, timezone
 
 import requests
 
-from feature_extraction_helpers.config import SERP_API_KEY, SERP_BASE_URL, DEXSCREENER_CHAIN_IDS, MORALIS_CHAIN_IDS, COINGECKO_CHAIN_IDS
-from feature_extraction_helpers.general_extraction_helpers import query_dexscreener, query_moralis, query_coingecko, \
+from feature_extraction_module.helpers.config import SERP_API_KEY, SERP_BASE_URL, DEXSCREENER_CHAIN_IDS, MORALIS_CHAIN_IDS, COINGECKO_CHAIN_IDS
+from feature_extraction_module.helpers.general_extraction_helpers import query_dexscreener, query_moralis, query_coingecko, \
     SESSION
 
 # Reference: https://www.snapper.studio/blog/twitter-rebrands

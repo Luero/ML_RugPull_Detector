@@ -15,8 +15,8 @@
 # MegaNode API key is required for BSC tokens (since Etherscan free plan does not support it) (https://docs.etherscan.io/supported-chains)
 
 
-from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
-from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
+from feature_extraction_module.helpers.holders_count_helpers import get_holders_snapshots
+from xlsx_helpers.io_helpers import load_file, get_headings, save_workbook
 
 
 # Time for snapshots in hours

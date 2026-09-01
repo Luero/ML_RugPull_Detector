@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-import feature_extraction_helpers.onchain_extraction_helpers as onchain
-from feature_extraction_helpers.config import NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE
+import feature_extraction_module.helpers.onchain_extraction_helpers as onchain
+from feature_extraction_module.helpers.config import NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE
 from tests.mock_env import FakeSession, FakeResponse
 
 DEPLOYMENT_TS = int(datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp())

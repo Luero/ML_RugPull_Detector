@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-import feature_extraction_helpers.general_extraction_helpers as helpers
+import feature_extraction_module.helpers.general_extraction_helpers as helpers
 from tests.mock_env import FakeResponse, FakeSession, RaisingSession
 
 # Scenarios are taken from manual testing and facing with particular error messages and responses

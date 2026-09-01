@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-import feature_extraction_helpers.general_extraction_helpers as general_helpers
+import feature_extraction_module.helpers.general_extraction_helpers as general_helpers
 import webapp
 from tests.mock_env import MockXGBClassifier
 import prediction_module.predictor as predictor_module

@@ -23,7 +23,7 @@ import csv
 import os
 from datetime import datetime
 
-from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook, parse_date
+from xlsx_helpers.io_helpers import load_file, get_headings, save_workbook, parse_date
 import re
 
 

@@ -4,7 +4,7 @@
 # are less likely to be fraudulent.
 
 
-from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook, parse_date
+from xlsx_helpers.io_helpers import load_file, get_headings, save_workbook, parse_date
 
 INPUT_FILE = '../data/TM-RugPull_prepared_for_enrichment.xlsx'
 # A placeholder file to safe from re-writing anything already computed,

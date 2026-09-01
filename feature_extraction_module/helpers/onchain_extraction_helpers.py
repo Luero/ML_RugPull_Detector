@@ -9,10 +9,10 @@ import requests
 import time
 import math
 
-from feature_extraction_helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS, \
+from feature_extraction_module.helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS, \
     NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE
-from feature_extraction_helpers.general_extraction_helpers import is_token_live, query_moralis, query_meganode, SESSION
-from feature_extraction_helpers.holders_count_helpers import get_holders_snapshots
+from feature_extraction_module.helpers.general_extraction_helpers import is_token_live, query_moralis, query_meganode, SESSION
+from feature_extraction_module.helpers.holders_count_helpers import get_holders_snapshots
 
 
 # Based on particular model trained on subset of features

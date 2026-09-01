@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-import feature_extraction_helpers.osnit_extraction_helpers as osint
+import feature_extraction_module.helpers.osnit_extraction_helpers as osint
 from tests.mock_env import FakeResponse, FakeSession
 
 

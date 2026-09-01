@@ -19,11 +19,11 @@
 # rather than loosing it, the feature also was added into the dataset.
 
 
-from xlxs_helpers.io_helpers import load_file, get_headings, save_workbook
+from xlsx_helpers.io_helpers import load_file, get_headings, save_workbook
 import pandas as pd
 import os
 
-from feature_extraction_helpers.source_code_helplers import SOLIDITY_MARKER_PATTERN, is_bytecode, \
+from feature_extraction_module.helpers.source_code_helplers import SOLIDITY_MARKER_PATTERN, is_bytecode, \
     LP_DRAIN_FEATURE_NAMES, has_concentrated_initial_mint, has_contract_swap_patterns, has_owner_guard, \
     has_lp_lock_reference, ALL_FEATURE_NAMES
 

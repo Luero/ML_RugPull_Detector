@@ -11,7 +11,7 @@
 
 from openpyxl import Workbook
 import re
-from xlxs_helpers.io_helpers import load_file, save_workbook, get_headings
+from xlsx_helpers.io_helpers import load_file, save_workbook, get_headings
 
 
 # Constants, since this script is applicable only to original dataset file due to its structure (rows and columns)

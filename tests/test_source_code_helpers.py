@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-import feature_extraction_helpers.source_code_helplers as source_code
+import feature_extraction_module.helpers.source_code_helplers as source_code
 
 
 # Tests detection of contract swap patterns in input

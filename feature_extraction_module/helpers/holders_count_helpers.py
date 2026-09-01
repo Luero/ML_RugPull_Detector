@@ -3,8 +3,8 @@
 
 import math
 
-from feature_extraction_helpers.config import NODEREAL_BLOCK_RANGE_SIZE, ETH_LOG_RESULT_LIMIT, TRANSFER_EVENT_HASH
-from feature_extraction_helpers.general_extraction_helpers import query_etherscan, query_meganode, \
+from feature_extraction_module.helpers.config import NODEREAL_BLOCK_RANGE_SIZE, ETH_LOG_RESULT_LIMIT, TRANSFER_EVENT_HASH
+from feature_extraction_module.helpers.general_extraction_helpers import query_etherscan, query_meganode, \
     get_deployment_block_and_timestamp, hours_to_blocks, get_block_number_by_timestamp, get_latest_block_eth, \
     find_block_by_timestamp
 

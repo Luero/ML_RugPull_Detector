@@ -51,7 +51,7 @@ def test_prepare_model_input_imputes_none_values(real_predictor, live_features):
     assert not model_input.isna().any().any()
 
 
-# Tests classification threshold (0.85), boundary is inclusive
+# Tests classification threshold (0.58), boundary is inclusive
 @pytest.mark.parametrize("scam_probability, expected_prediction", [
     (0.57, 'normal'),   # right before 0.58
     (0.58, 'scam'),     # exactly at the threshold

@@ -30,7 +30,7 @@ from prediction_module.predictor import Predictor
 # Switch to 'True' to include all tokens
 INCLUDE_HEAVY = True
 
-OUTPUT_DIR = 'research/validation'
+OUTPUT_DIR = ''
 
 VALIDATION_TOKENS = [
     # Documented rug pulls (expected 'scam')

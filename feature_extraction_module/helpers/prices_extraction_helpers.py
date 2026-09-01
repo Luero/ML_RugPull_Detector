@@ -26,9 +26,9 @@ import math
 import time
 from datetime import datetime, timezone
 
-from feature_extraction_helpers.config import COINGECKO_CHAIN_IDS, GECKOTERMINAL_NETWORK_IDS, MORALIS_CHAIN_IDS, \
+from feature_extraction_module.helpers.config import COINGECKO_CHAIN_IDS, GECKOTERMINAL_NETWORK_IDS, MORALIS_CHAIN_IDS, \
     GECKOTERMINAL_MAX_DEPTH_SECONDS, DEFILLAMA_CHAIN_IDS, DEFILLAMA_MAX_SPAN
-from feature_extraction_helpers.general_extraction_helpers import query_coingecko, is_token_live, query_geckoterminal, \
+from feature_extraction_module.helpers.general_extraction_helpers import query_coingecko, is_token_live, query_geckoterminal, \
     query_moralis, query_defillama
 
 # Thresholds to pick OHLCV candle resolution based on window length, based on CoinGecko convention.

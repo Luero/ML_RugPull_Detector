@@ -5,8 +5,8 @@ import math
 
 import pytest
 
-import feature_extraction_helpers.holders_count_helpers as holders
-from feature_extraction_helpers.config import TRANSFER_EVENT_HASH
+import feature_extraction_module.helpers.holders_count_helpers as holders
+from feature_extraction_module.helpers.config import TRANSFER_EVENT_HASH
 
 ZERO_ADDRESS = '0x' + '0' * 40
 ADDRESS_A = '0x' + 'a' * 40

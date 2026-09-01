@@ -6,8 +6,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-import feature_extraction_helpers.prices_extraction_helpers as prices
-from feature_extraction_helpers.config import GECKOTERMINAL_MAX_DEPTH_SECONDS
+import feature_extraction_module.helpers.prices_extraction_helpers as prices
+from feature_extraction_module.helpers.config import GECKOTERMINAL_MAX_DEPTH_SECONDS
 from tests.mock_env import make_pool
 
 WINDOW_START = 1000

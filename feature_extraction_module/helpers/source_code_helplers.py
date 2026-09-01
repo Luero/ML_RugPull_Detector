@@ -10,7 +10,7 @@ import re
 import json
 import math
 
-from feature_extraction_helpers.general_extraction_helpers import query_etherscan
+from feature_extraction_module.helpers.general_extraction_helpers import query_etherscan
 
 # Regex pattern to identify Solidity source code (for safety check run on all .txt files)
 SOLIDITY_MARKER_PATTERN = re.compile(r'pragma\s+solidity|SPDX-License-Identifier|contract\s+\w', re.IGNORECASE)

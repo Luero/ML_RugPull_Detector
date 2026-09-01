@@ -9,7 +9,7 @@ import numpy as np
 from flask import Flask, render_template, request, jsonify
 
 from app import scan_token
-from feature_extraction_helpers.config import ETHERSCAN_CHAIN_IDS
+from feature_extraction_module.helpers.config import ETHERSCAN_CHAIN_IDS
 from prediction_module.predictor import Predictor, PREDICTION_THRESHOLD
 
 app = Flask(__name__)
