@@ -5,10 +5,8 @@ import time
 import numpy as np
 import pytest
 
+from tests.conftest import VALID_ADDRESS_PATTERN
 from ui_module import webapp
-
-# Valid token address pattern
-VALID_ADDRESS = '0x' + 'a' * 40
 
 
 # Tests that a root route holds a main page
@@ -29,8 +27,8 @@ def test_index_page_is_served(client):
 
 # Tests that invalid input is rejected and returns code 400
 @pytest.mark.parametrize('payload', [
-    {'chain': 'SOLANA', 'token_address': VALID_ADDRESS},        # unsupported chain
-    {'token_address': VALID_ADDRESS},                           # chain missing
+    {'chain': 'SOLANA', 'token_address': VALID_ADDRESS_PATTERN},        # unsupported chain
+    {'token_address': VALID_ADDRESS_PATTERN},                           # chain missing
     {'chain': 'ETH', 'token_address': '0x123'},                 # address too short
     {'chain': 'ETH', 'token_address': 'a' * 42},                # no 0x prefix
     {'chain': 'ETH', 'token_address': 42},                      # address is not a string
@@ -49,7 +47,7 @@ def test_prediction_returns_result_with_risk_band(client, monkeypatch):
     monkeypatch.setattr(webapp, 'scan_token', lambda predictor, chain, token_address: {
         'prediction': 'scam', 'scam_probability': 0.9, 'risk_signals': [], 'error': None,
         'features': {'Number of holders': 9}, 'missing_features': []})
-    response = client.post('/api/predict', json={'chain': 'ARBI', 'token_address': VALID_ADDRESS})
+    response = client.post('/api/predict', json={'chain': 'ARBI', 'token_address': VALID_ADDRESS_PATTERN})
     assert response.status_code == 202
     job = wait_for_job(client, response.get_json()['job_id'])
     assert job['status'] == 'done'
@@ -63,7 +61,7 @@ def test_prediction_with_extraction_error_returns_error(client, monkeypatch):
     monkeypatch.setattr(webapp, 'scan_token', lambda predictor, chain, token_address: {
         'prediction': None, 'scam_probability': None, 'risk_signals': None,
         'features': None, 'missing_features': None, 'error': 'No contract deployment found'})
-    response = client.post('/api/predict', json={'chain': 'ETH', 'token_address': VALID_ADDRESS})
+    response = client.post('/api/predict', json={'chain': 'ETH', 'token_address': VALID_ADDRESS_PATTERN})
     job = wait_for_job(client, response.get_json()['job_id'])
     assert job['status'] == 'done'
     assert job['result']['error'] == 'No contract deployment found'
@@ -77,7 +75,7 @@ def test_prediction_result_is_json_safe(client, monkeypatch):
         'features': {'MaxPrice (Quarter 1)': float('nan'), 'Number of holders': np.int64(9),
                      'the number of Transactions': np.float32(116.0)},
         'missing_features': []})
-    response = client.post('/api/predict', json={'chain': 'ETH', 'token_address': VALID_ADDRESS})
+    response = client.post('/api/predict', json={'chain': 'ETH', 'token_address': VALID_ADDRESS_PATTERN})
     job = wait_for_job(client, response.get_json()['job_id'])
     features = job['result']['features']
     assert features['MaxPrice (Quarter 1)'] is None
@@ -88,9 +86,9 @@ def test_prediction_result_is_json_safe(client, monkeypatch):
 # Tests that a job is marked as 'failed' in case of crash in extraction
 def test_calculate_prediction_marks_crash_as_failed(monkeypatch):
     monkeypatch.setattr(webapp, 'scan_token', raising_error_for_failed_prediction)
-    webapp.scan_jobs['job1'] = {'status': 'running', 'chain': 'ETH', 'token_address': VALID_ADDRESS,
+    webapp.scan_jobs['job1'] = {'status': 'running', 'chain': 'ETH', 'token_address': VALID_ADDRESS_PATTERN,
                                 'result': None, 'error': None}
-    webapp.calculate_prediction('job1', 'ETH', VALID_ADDRESS)
+    webapp.calculate_prediction('job1', 'ETH', VALID_ADDRESS_PATTERN)
     assert webapp.scan_jobs['job1']['status'] == 'failed'
     assert 'Prediction failed!' in webapp.scan_jobs['job1']['error']
 

@@ -14,6 +14,9 @@ import prediction_module.predictor as predictor_module
 # To find prediction module and model itself
 PROJECT_ROOT = Path(__file__).parent.parent
 
+# Valid token address pattern for testing
+VALID_ADDRESS_PATTERN = '0x' + 'a' * 40
+
 
 # Disable sleeping to run tests instantly
 @pytest.fixture

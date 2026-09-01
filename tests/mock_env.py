@@ -8,6 +8,7 @@ import requests
 import feature_extraction_module.feature_extractor as extractor_module
 
 
+# Mocked data for testing
 VALID_ADDRESS = '0x06D02e9D62A13fC76BB229373FB3BBBD1101D2fC'
 DEPLOYMENT_TS = int(datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp())
 LATEST_TS = datetime(2025, 6, 1, tzinfo=timezone.utc)
@@ -117,3 +118,25 @@ class MockBooster:
         if contribs is None:
             contribs = np.zeros(15)
         return np.array([contribs])
+
+
+# Imitates FeatureExtractor, returns extraction result from each test
+class MockExtractor:
+    result = None
+
+    def __init__(self, chain, token_address):
+        pass
+
+    def extract_features(self):
+        return MockExtractor.result
+
+
+# Imitates a Predictor that returns a prediction result set by tests.
+# If no result, predictor must not be called at all
+class MockPredictor:
+    result = None
+
+    def predict(self, features):
+        if MockPredictor.result is None:
+            raise AssertionError('predict must not be called when extraction failed')
+        return MockPredictor.result

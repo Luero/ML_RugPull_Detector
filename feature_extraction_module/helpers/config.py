@@ -1,4 +1,4 @@
-# Contains constants that are reused through feature extraction functions, including API keys and base URLs for
+# Contains constants that are reused through feature extraction functions, including API keys, base URLs for
 # data sources, source-specific chain ID resolutions, API limits, waiting intervals
 
 import os
@@ -36,9 +36,11 @@ DEFILLAMA_MAX_SPAN = 500
 # https://serpapi.com/search-api
 SERP_API_KEY = os.getenv('SERP_API_KEY')
 SERP_BASE_URL = "https://serpapi.com/search?engine=google"
-# https://docs.dexscreener.com/api/reference (is used to get website URL and X profile based on token address)
+# Used to get website URL and X profile based on token address
+# https://docs.dexscreener.com/api/reference
 DEXSCREENER_BASE_URL = "https://api.dexscreener.com"
 
+# Used both for price resolution and to get project's socials (website and X profile)
 # https://docs.coingecko.com/docs/keyless-public-api
 COINGECKO_API_KEY= os.getenv('COINGECKO_API_KEY')
 COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3'
@@ -49,7 +51,7 @@ GECKOTERMINAL_BASE_URL = 'https://api.coingecko.com/api/v3/onchain'
 # A guard for rejecting calls for API where a lot of information is retrieved
 ETHERSCAN_MAX_RETRIES = 3
 ETHERSCAN_RETRY_DELAY_SECONDS = 1.0
-# Sometimes server return code 500 (internal server error), so 3 retries per call is set
+# Sometimes server returns code 500 (internal server error), so 3 retries per call is set
 BLOCKSCOUT_MAX_RETRIES = 3
 BLOCKSCOUT_RETRY_DELAY_SECONDS = 1.5
 # Same logic
@@ -81,7 +83,7 @@ DEXSCREENER_CHAIN_IDS = {'ETH': 'ethereum', 'BSC': 'bsc', 'POLYGON': 'polygon', 
 # IDs of chains supported by DeFiLama
 DEFILLAMA_CHAIN_IDS = {'ETH': 'ethereum', 'BSC': 'bsc', 'POLYGON': 'polygon', 'ARBI': 'arbitrum'}
 
-# Historical data available only for 180 days in the past for demo API key
+# Historical data available only for 180 days in the past for demo API key via CoinGeckoTerminal
 GECKOTERMINAL_MAX_DEPTH_SECONDS = 180 * 24 * 3600
 
 # https://www.4byte.directory/event-signatures/?bytes_signature=0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
@@ -97,14 +99,14 @@ NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE = 1999999
 
 
 # API limitations for calls per time
-ETHERSCAN_TIME_INTERVAL = 0.45              # 3 calls/sec, but here is a conservative number to keep a margin
+ETHERSCAN_TIME_INTERVAL = 0.45              # 3 calls/sec, but this is a conservative number to keep a margin
 NODEREAL_TIME_INTERVAL = 0.20
 # Reference: https://docs.coingecko.com/docs/keyless-public-api
 COINGECKO_TIME_INTERVAL = 0.65
 GECKOTERMINAL_TIME_INTERVAL = 2.1
 # Depends on CU (computing units)
 MORALIS_TIME_INTERVAL = 0.15
-# No hard published limit, but small interval used to be safe
+# No hard published limit, but small interval is used to be safe
 DEFILLAMA_TIME_INTERVAL = 0.15
 
 
