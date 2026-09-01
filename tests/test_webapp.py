@@ -5,7 +5,7 @@ import time
 import numpy as np
 import pytest
 
-import webapp
+from ui_module import webapp
 
 # Valid token address pattern
 VALID_ADDRESS = '0x' + 'a' * 40

@@ -8,9 +8,9 @@ import uuid
 import numpy as np
 from flask import Flask, render_template, request, jsonify
 
-from app import scan_token
 from feature_extraction_module.helpers.config import ETHERSCAN_CHAIN_IDS
 from prediction_module.predictor import Predictor, PREDICTION_THRESHOLD
+from prediction_module.scan_token import scan_token
 
 app = Flask(__name__)
 predictor = Predictor()
@@ -98,8 +98,3 @@ def make_json_safe(value):
     if isinstance(value, float) and math.isnan(value):
         return None
     return value
-
-
-if __name__ == '__main__':
-    # Port 5001 (5000 is used by macOS)
-    app.run(port=5001)
