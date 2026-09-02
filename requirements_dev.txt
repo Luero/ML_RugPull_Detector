@@ -133,3 +133,4 @@ websocket-client==1.9.0
 xgboost==2.1.4
 zipp==3.23.1
 pytest==8.4.2
+python-dotenv==1.2.1

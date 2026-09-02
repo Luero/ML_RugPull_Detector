@@ -30,7 +30,7 @@ from prediction_module.scan_token import scan_token
 # Switch to 'True' to include all tokens
 INCLUDE_HEAVY = True
 
-OUTPUT_DIR = ''
+OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 VALIDATION_TOKENS = [
     # Documented rug pulls (expected 'scam')
