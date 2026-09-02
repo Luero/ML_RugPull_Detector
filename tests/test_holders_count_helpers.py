@@ -1,4 +1,4 @@
-# Testing holders_count_helpers, including transfer-replay holder counting logic and snapshot block resolution
+# Testing holders_count_helpers, including transfer-replay holder counting logic and snapshot block resolution.
 # Does not require real connection
 
 import math

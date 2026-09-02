@@ -1,12 +1,12 @@
 # Extract token name similarity to top-200 projects in form of similarity score.
 # Deceptive name similarity is one of OSINT features mentioned in related work as a strong signal of fraud.
-
+#
 # The script uses top-200 snapshots taken from CoinMarketCap historical page (extracted manually by copy-pasting into .csv files).
 # Dates for snapshots were picked with consideration of the dataset content (most tokens are from 2021-2024) and market situation:
 # so before 2021 snapshots were taken on annual basis (on May). In 2021, 2022 more snapshots were taken, since the market was active
 # and top-200 tokens changed faster. Moreover, some market events drove significant changes in ranking (fall of Tera Luna and FTX exchange).
 # Thus, to reflect these events, pre- and post- events snapshots were also taken.
-
+#
 # Methodology to count similarity:
 # (1) project names and symbols both are assessed separately, and then their scores are combined with heuristic weight application;
 # (2) maximum combined similarity score is saved as a feature;
@@ -16,7 +16,7 @@
 # (5) self-matches with real tokens are allowed, since to distinguish normal token from scam a label should be used, but then the model will learn
 #     incorrect patterns; the computed feature is aimed to represent similarity, not a conclusive answer whether a token is legitimate one;
 # (6) names and symbols are compared against the snapshot which is closest to the project start date, but before the project launch, because
-#     token can 'mimic' only coins that exist on time of its launch
+#     token can 'mimic' only coins that exist on time of its launch.
 
 
 import csv

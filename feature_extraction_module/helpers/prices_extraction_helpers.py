@@ -20,6 +20,7 @@
 #     Moralis has less coverage than GeckoTerminal (fewer chains and DEXes), but does not have a limit for historical requests, so it is useful
 #     when a long-living token is queried. It's free plan allows only 1-month free trial, thus, it is used only as a supplementary source to
 #     avoid failures on the key expiration.
+#     Reference: https://docs.moralis.com/data-api/evm/token/prices/ohlc
 
 
 import math
@@ -30,6 +31,7 @@ from feature_extraction_module.helpers.config import COINGECKO_CHAIN_IDS, GECKOT
     GECKOTERMINAL_MAX_DEPTH_SECONDS, DEFILLAMA_CHAIN_IDS, DEFILLAMA_MAX_SPAN
 from feature_extraction_module.helpers.general_extraction_helpers import query_coingecko, is_token_live, query_geckoterminal, \
     query_moralis, query_defillama
+
 
 # Thresholds to pick OHLCV candle resolution based on window length, based on CoinGecko convention.
 # More granularity for short living tokens (to catch rug-pull), increasing for long-living projects due to
@@ -50,7 +52,7 @@ MORALIS_TIMEFRAME_THRESHOLDS_SECONDS = (
 )
 
 
-# Primary path, works only for tokens CoinGecko already tracks
+# Primary path, works only for tokens CoinGecko already tracks.
 # Caches every 5 minutes for Demo plan
 # Reference: https://docs.coingecko.com/demo/reference/contract-address-market-chart-range
 def get_prices_coingecko(blockchain, token_address, from_timestamp, to_timestamp):
@@ -64,14 +66,14 @@ f"/coins/{blockchain}/contract/{token_address}/market_chart/range",
     if data is None or not data.get('prices'):
         return None
     print(f"...CoinGecko path succeeded for {token_address} on {blockchain}")
-    # CoinGecko timestamps are in milliseconds, normalizing required to match CoinGeckoTerminal
+    # CoinGecko timestamps are in milliseconds, normalising required to match CoinGeckoTerminal
     return [(timestamp_ms / 1000, price) for timestamp_ms, price in data['prices']]
 
 
 # CoinGecko Terminal contains on-chain information about pools created involving a particular address, thus,
 # to query prices it is necessary to find related pools. Chooses a pull with most money (most representative for
 # prices extraction) + the earliest pool to get starting point for prices extraction (before the first pool, there are
-# no prices)
+# no prices).
 # Cached every 60 seconds for Demo plan
 # Reference: https://docs.coingecko.com/demo/reference/top-pools-contract-address
 def get_top_pool_address(chain, token_address):
@@ -128,7 +130,7 @@ def choose_moralis_timeframe(window_seconds):
             return timeframe
 
 
-# Get aggregated prices from a chosen pool
+# Get aggregated prices from a chosen pool.
 # Cached every 60 seconds for Demo plan
 # Reference: https://docs.coingecko.com/demo/reference/pool-ohlcv-contract-address
 def get_ohlcv_history(chain, pool_address, from_timestamp, to_timestamp, token_side):
@@ -264,7 +266,7 @@ def get_prices_defillama(chain, token_address, from_timestamp, to_timestamp):
 
 # Attempt to fetch data from Geckoterminal, DeFiLama or Moralis (alternatively).
 # Three sources are required, since each has different coverage and historical depth limits + API key restrictions.
-# Prices are queried either via Geckoterminal, or DeFiLama or Moralis, depending on the date of this pool, because Geckoterminal
+# Prices are queried either via Geckoterminal, or DeFiLama or Moralis, depending on the date of the pool, because Geckoterminal
 # gives prices not later than 180 days under demo API key, and DeFiLama gives only daily prices
 def try_geckoterminal_defilama_or_moralis(chain, token_address, window_start, window_end, top_pool_adr, earliest_pool_adr,
                                           top_token_side, earliest_token_side):
@@ -304,10 +306,10 @@ def try_geckoterminal_defilama_or_moralis(chain, token_address, window_start, wi
 
 # Extract 'MaxPrice (Quarter 1)', 'MaxPrice (Quarter 2)' for a live-queried token.
 # First, chooses a pull with most money (most representative for prices extraction) + the earliest pool to get starting point
-# for prices extraction (before the first pool, there are no prices) via GeckoTerminal
+# for prices extraction (before the first pool, there are no prices) via GeckoTerminal.
 # Reference: https://docs.coingecko.com/demo/reference/top-pools-contract-address
-# Then tries CoinGecko API first to get prices. If a queried token is not listed here (result is None), tries either GeckoTerminal, or Moralis
-# depending on how old is a queried token.
+# Then tries CoinGecko API first to get prices. If a queried token is not listed here (result is None), tries either GeckoTerminal, DefeLama
+# or Moralis depending on how old is a queried token.
 def get_max_price_quarters_live(chain, token_address, deployment_timestamp, window_end):
     print("MaxPrice (Quarter 1)/(Quarter 2) are calculating...")
     top_pool_adr, earliest_pool_created_at, earliest_pool_adr, top_token_side, earliest_token_side = get_top_pool_address(chain, token_address)

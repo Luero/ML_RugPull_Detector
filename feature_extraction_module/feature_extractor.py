@@ -1,8 +1,11 @@
-# Contains a class aimed to combine all feature extraction helpers into a singe pipeline.
+# FeatureExtractor class is aimed to combine all feature extraction helpers into a singe pipeline.
 # It needs a chain and a token address.
 # Firstly, extracts token's shared context (values that are re-used later in different extraction scripts),
 # then in extract_features calls feature extraction functions one by one (prices -> onchain -> source code -> OSINT).
 # Returns a dictionary with extracted features, named as relevant features in the dataset, to be consumed by prediction module.
+#
+# The latest block is used as 'now' point at time to extract values at the time of query and reuse them
+# for all features for consistency.
 
 import math
 
@@ -20,7 +23,7 @@ class FeatureExtractor:
     def __init__(self, chain, token_address):
         self.chain = chain
         self.token_address = token_address
-        # Shared context, got once for query and reused it all extraction functions
+        # Shared context, got once for query and reused in all extraction functions
         self.latest_block = None
         self.latest_block_timestamp = None
         self.deployment_block = None
@@ -38,7 +41,7 @@ class FeatureExtractor:
         return None
 
 
-    # Retrieve variables that are reused by all extraction functions
+    # Retrieve variables that are reused by all extraction functions.
     # Returns None, if success, and an error message if failure
     def prepare_shared_context(self):
         print("Retrieving shared context...")
@@ -55,7 +58,7 @@ class FeatureExtractor:
         return None
 
 
-    # Extract all features consumed by the prediction module for a queried token
+    # Extract all features consumed by the prediction module for a queried token.
     # Returns a dictionary with:
     # - 'features' (extracted features with dataset column names or None if extraction failed);
     # - 'missing_features' (names of features that could not be extracted (so UI can warn user);

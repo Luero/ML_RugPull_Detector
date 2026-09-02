@@ -1,6 +1,6 @@
-# Extract features from any queried token on Eth, BSC, Arbitrum or Polygon using token contract address and blockchain.
+# Extract on-chain features for any queried token on Eth, BSC, Arbitrum or Polygon using token contract address and blockchain.
 # Is used for feature_extraction_module of the application. Once extracted, features are submitted to the prediction module,
-# where the developed model consume them to make a prediction.
+# where the developed model consumes them to make a prediction.
 
 
 from datetime import datetime, timezone
@@ -9,9 +9,9 @@ import requests
 import time
 import math
 
-from feature_extraction_module.helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, MORALIS_CHAIN_IDS, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS, \
+from feature_extraction_module.helpers.config import NETWORK_TO_BLOCKCHAIN_TYPE, BLOCKSCOUT_BASE_URLS, BLOCKSCOUT_MAX_RETRIES, BLOCKSCOUT_RETRY_DELAY_SECONDS, \
     NODEREAL_ASSET_TRANSFERS_BLOCK_RANGE
-from feature_extraction_module.helpers.general_extraction_helpers import is_token_live, query_moralis, query_meganode, SESSION
+from feature_extraction_module.helpers.general_extraction_helpers import is_token_live, query_meganode, SESSION
 from feature_extraction_module.helpers.holders_count_helpers import get_holders_snapshots
 
 
@@ -59,6 +59,7 @@ def get_blockchain_type(chain):
 
 # General function to retrieve indexed number of transfers and holder count via Blockscout API (/counters endpoint)
 # Works for all supported chains except BSC
+# Reference: https://docs.blockscout.com/api-reference/tokens/get-holder-and-transfer-count-statistics-for-a-specific-token
 def get_token_counters(chain, token_address):
     base_url = BLOCKSCOUT_BASE_URLS.get(chain)
     if base_url is None:
@@ -81,9 +82,8 @@ def get_token_counters(chain, token_address):
     return None
 
 
-# Extract 'the number of Transactions' feature, which appear to be transfer count for the token lifetime, based on TM-RugPull dataset
-# For each supported chain except BSC uses Blockscout free API
-# Reference: https://docs.blockscout.com/api-reference/smart-contracts/get-count-statistics-new-&-newly-verified-for-deployed-smart-contracts
+# Extract 'the number of Transactions' feature, which appear to be transfer count, based on TM-RugPull dataset.
+# For each supported chain except BSC uses Blockscout free API.
 def get_number_of_transactions(chain, token_address, deployment_block, latest_block):
     print("Number of transactions are calculating...")
     if chain == 'BSC':
@@ -121,7 +121,7 @@ def get_number_of_transactions_bsc(token_address, deployment_block, latest_block
     return total_transfers
 
 
-# Extract 'Number of holders' feature for all supported chains
+# Extract 'Number of holders' feature for all supported chains.
 # For all chains except BSC uses Blockscout cached results
 def get_current_token_holder_count(chain, token_address):
     print("Current token holders number is calculating...")
@@ -147,6 +147,7 @@ def get_current_token_holder_count_bsc(token_address):
     return int(result['result'], 16)
 
 
+# Combine extraction of all required on-chain features, returns a dictionary
 def get_onchain_features_live(chain, token_address, deployment_block, deployment_timestamp, latest_block, latest_block_timestamp, last_activity_timestamp):
     project_period_days = get_project_period_days(chain, token_address, deployment_block, deployment_timestamp, latest_block_timestamp, last_activity_timestamp)
     snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS, deployment_block, deployment_timestamp, latest_block_timestamp)

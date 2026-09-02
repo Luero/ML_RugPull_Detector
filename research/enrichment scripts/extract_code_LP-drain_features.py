@@ -39,9 +39,9 @@ INPUT_FILE = '../research/data/TM-RugPull_with_holder_count_snapshots.xlsx'
 OUTPUT_FILE = "../research/data/placeholder.xlsx"
 
 
-# Build a composite key to use for mapping projects to relevant rows in original dataset and then to .txt files
-# Using simple a project title could fail, because there are projects with identical names
-# Uses values for 'Project Title' and 'project end date'
+# Build a composite key to use for mapping projects to relevant rows in original dataset and then to .txt files.
+# Using just a project title could fail, because there are projects with identical names, thus,
+# it uses values for 'Project Title' and 'project end date'
 def build_composite_key(row):
     return f"{row['Project Title']}|{row['project end date']}"
 
@@ -92,7 +92,7 @@ def load_source_code_for_row(row, mapping_result):
         return None
 
 
-# Check whether a file is present, not empty and looks like Solidity source code file
+# Check whether a file is present, not empty and looks like Solidity source code file.
 # Required to avoid errors and false positive results by running feature extraction on files that are not source codes
 def check_source_file_safety(source_code):
     if source_code is None:

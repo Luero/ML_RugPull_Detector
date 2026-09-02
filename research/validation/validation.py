@@ -5,7 +5,7 @@
 #
 # Validation set consists of 28 tokens: 9 documented rug pulls (32%) and 19 legitimate tokens of different
 # chains, sizes, ages and kinds, including bridges of different sizes (deployments of legitimate projects to "connect" main
-# blockchain of deployment and another network) and a tokenized real-world asset. All tokens carry expected labels.
+# blockchain and another network) and a tokenized real-world asset. All tokens carry expected labels.
 #
 # Saves results into two files:
 # - a CSV with predictions vs expected labels;
@@ -13,8 +13,8 @@
 #   date of query).
 # Snapshots preserve what results were used for a particular round of verification.
 #
-# Each token costs up to 3 SerpApi searches (free tier is 250/month) and several minutes of throttled
-# API calls. Tokens marked 'heavy' had high transfer volume (expensive holder snapshots), so they are skipped unless
+# Each token costs up to 3 SerpApi searches (free tier is 250/month) and up to several minutes of API calls.
+# Tokens marked 'heavy' had high transfer volume (expensive holder snapshots), so they are skipped unless
 # INCLUDE_HEAVY is set.
 
 import json
@@ -23,8 +23,8 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
-from app import scan_token
 from prediction_module.predictor import Predictor
+from prediction_module.scan_token import scan_token
 
 
 # Switch to 'True' to include all tokens

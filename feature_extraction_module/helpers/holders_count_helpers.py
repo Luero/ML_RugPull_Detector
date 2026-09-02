@@ -1,5 +1,5 @@
-# Helper functions to extract holder count snapshots
-# Used both for the dataset enrichment and for live feature extraction pipeline
+# Helper functions to extract holder count snapshots.
+# Used both for the dataset enrichment and for live feature extraction pipeline.
 
 import math
 
@@ -59,9 +59,9 @@ def get_transfer_logs_etherscan(chain, token_address, from_block, to_block):
     return chunk_logs, False
 
 
-# Retrieve transfer logs for BSC tokens using NodeReal API
-# Get one chunk from NodeReal (for BSC tokens) considering API result limitations
-# If limit is hit, function divides results and treats each half separately
+# Retrieve transfer logs for BSC tokens using NodeReal API.
+# Get one chunk from NodeReal (for BSC tokens) considering API result limitations.
+# If limit is hit, function divides results and treats each half separately.
 # https://docs.nodereal.io/reference/eth-getlogs-bnb-chain
 def get_transfer_logs_bsc(token_address, from_block, to_block):
     result = query_meganode('eth_getLogs', [{
@@ -90,14 +90,14 @@ def get_block_number_from_log(log):
     return int(block_number, 16) if isinstance(block_number, str) else int(block_number)
 
 
-# Extract transfer value from log
-# Assumes that contract defines Transfer event in compliance with ERC-20 standards, but accepts slight deviations
-# If value cannot be extracted from logs, returns None and will be treated as missing value in the dataset later
+# Extract transfer value from log.
+# Assumes that a contract defines Transfer event in compliance with ERC-20 standards, but accepts slight deviations.
+# If value cannot be extracted from logs, returns None and will be treated as missing value in the dataset later.
 def get_transfer_value_from_log(log):
     # Standard ERC-20 Transfer event
     if log['data'] != '0x':
         return int(log['data'], 16)
-    # Non-standard Transfer event with indexed value
+    # Non-standard Transfer event with indexed value.
     # Added, since tests for some contract addresses (e.g. '0xF210D5d9DCF958803C286A6f8E278e4aC78e136E' on ETH) revealed
     # non-standard ERC-20 contract definition for Transfer event, thus, it needs to be handled
     if len(log['topics']) > 3:
@@ -187,7 +187,7 @@ def get_holders_snapshots(chain, token_address, time_for_snapshot_hours, deploym
         return {f"Holders_{h}h": math.nan for h in time_for_snapshot_hours}
     logs.sort(key=get_block_number_from_log)
     snapshots = count_holders_for_snapshots(logs, target_blocks)
-    # If transfer value cannot be extracted from logs, holder counts for this token will be treated as missing value in dataset
+    # If transfer value cannot be extracted from logs, holder counts for this token will be treated as missing value
     if snapshots is None:
         return {f'Holders_{h}h': math.nan for h in time_for_snapshot_hours}
     return snapshots

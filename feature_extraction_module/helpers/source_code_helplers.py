@@ -12,6 +12,7 @@ import math
 
 from feature_extraction_module.helpers.general_extraction_helpers import query_etherscan
 
+
 # Regex pattern to identify Solidity source code (for safety check run on all .txt files)
 SOLIDITY_MARKER_PATTERN = re.compile(r'pragma\s+solidity|SPDX-License-Identifier|contract\s+\w', re.IGNORECASE)
 
@@ -69,9 +70,9 @@ OWNER_GUARD_PATTERNS = [
     re.compile(r'DEFAULT_ADMIN_ROLE', re.IGNORECASE)
 ]
 
-# Unlocked liquidity may be one of signs of rug-pull, since there are no mechanisms preventing developer from withdrawal
+# Unlocked liquidity may be one of signs of rug-pull, since there are no mechanisms preventing developer from withdrawal.
 # Search for references to locking mechanisms, including names of widely-used third-party services and generic 'locker'
-# to catch any less famous or wide-spread locking services
+# to catch any less famous or wide-spread locking services.
 # Absence of lock in contract does not mean liquidity is unlocked, external services may be used, but still worth checking
 # References: https://simplebaseswap.com/blog/rug-pulls-explained-how-liquidity-scams-work/, https://coingape.com/best-liquidity-lockers/
 LP_LOCK_REFERENCE_PATTERNS = [
@@ -98,9 +99,7 @@ LP_LOCK_REFERENCE_PATTERNS = [
 # Patterns for bytecode in .txt files (meaning that contract is not verified)
 EVM_BYTECODE_PATTERN = re.compile(r'\b(?:PUSH\d*|JUMPDEST|MSTORE|SLOAD|SSTORE|REVERT)\b', re.IGNORECASE)
 
-# Names for columns for enrichment
-# 'Is_contract_verified' is added here for code simplicity, although it is not a sign of LP-drain,
-# but could be a sign of scam in general. Extracted here, since the script checks .txt files to be bytecode
+# Names for columns for enrichment that may be signs of LP-drain
 LP_DRAIN_FEATURE_NAMES = [
     'has_concentrated_initial_mint',
     'has_contract_swap_patterns',
@@ -108,42 +107,45 @@ LP_DRAIN_FEATURE_NAMES = [
     'has_lp_lock_reference',
 ]
 
+# 'Is_contract_verified' is added here, although it is not a sign of LP-drain,
+# but could be a sign of scam in general. Extracted here, since the script checks .txt files to be bytecode
 ALL_FEATURE_NAMES = LP_DRAIN_FEATURE_NAMES + ['is_contract_verified']
 
 
-# Check whether source code is bytecode, not a Solidity file
+# Check whether source code is bytecode, not a Solidity file.
 # If .txt file does not contain Solidity code, it is technically unfeasible in this script to extract necessary features,
 # so their values will be treated as missing in enriched dataset
 def is_bytecode(source_code):
     opcode_hits = len(EVM_BYTECODE_PATTERN.findall(source_code))
-    return opcode_hits > 20                 # 20 is chosen to prevent accidental matches, it is unlikely to hit 20+ times
+    # 20 is chosen to prevent accidental matches, it is unlikely to hit 20+ times
+    return opcode_hits > 20
 
 
-# Detects common implementations of allocation full initial supply to a single address
+# Detects common implementations of allocation full initial supply to a single address.
 # A precondition for control over liquidity, not a conclusive signal
 def has_concentrated_initial_mint(source_code):
     return any(pattern.search(source_code) for pattern in CONCENTRATED_MINT_PATTERNS)
 
 
-# Detects common implementations of a function that can swap its own token balance for base cryptocurrency (ETH/BNB/ARBI/POLYGON)
+# Detects common implementations of a function that can swap its own token balance for base cryptocurrency (ETH/BNB/ARBI/POLYGON).
 # A precondition for removal (swapping) liquidity, not a conclusive signal
 def has_contract_swap_patterns(source_code):
     return any(pattern.search(source_code) for pattern in CONTRACT_SWAP_PATTERNS)
 
 
-# Detects common implementations of a swap call is restricted to privileged accounts
+# Detects common implementations of a swap call is restricted to privileged accounts.
 # Could be a signal only in combination with has_contract_swap_patterns
 def has_owner_guard(source_code):
     return any(pattern.search(source_code) for pattern in OWNER_GUARD_PATTERNS)
 
 
-# Detects common implementations of any reference to a lock mechanism or known locker service
+# Detects common implementations of any reference to a lock mechanism or known locker service.
 # Is not conclusive, since locking mechanisms can be implemented externally, without any source-code reference
 def has_lp_lock_reference(source_code):
     return any(pattern.search(source_code) for pattern in LP_LOCK_REFERENCE_PATTERNS)
 
 
-# Extract source code for a token contract via Etherscan
+# Extract source code for a token contract via Etherscan.
 # Works uniformly for all supported chains on free plan: https://docs.etherscan.io/supported-chains
 # Reference: https://docs.etherscan.io/api-reference/endpoint/getsourcecode
 def get_contract_source_code(chain, token_address):
@@ -160,7 +162,7 @@ def get_contract_source_code(chain, token_address):
     return normalised_source_code
 
 
-# Flat source code from row response into a single string to apply regex patterns, if multiple files
+# Flat source code from row response into a single string to apply regex patterns, if multiple files.
 # If there is one file, return as plain Solidity source
 def normalise_source_code(source_code):
     # Multy-file responses are wrapped in {{ }}
@@ -175,7 +177,7 @@ def normalise_source_code(source_code):
     return '\n'.join(file_data.get('content', '') for file_data in sources.values())
 
 
-# Extract 'has_contract_swap_patterns', 'has_owner_guard' features for a live-queried token
+# Extract 'has_contract_swap_patterns', 'has_owner_guard' features for a live-queried token.
 # Missing values or unverified contracts (bytecode only) are treated as missing values for prediction module
 def get_source_code_features_live(chain, token_address):
     print("Code-based features are calculating...")

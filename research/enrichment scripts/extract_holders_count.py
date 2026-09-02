@@ -3,15 +3,16 @@
 # to detect them is within first 8-20 hours (see Report).
 #
 # The script performs the following steps:
-# (1) finds the deployment block and obtains the block number
+# (1) finds the deployment block and obtains the block number;
 # (2) resolves block closest to each snapshot time via Etherscan's getblocknobytime for each chain except BSC; for BSC
 #     an approximation is used (chain's average block time based on BscScan info), since Etherscan's free plan does not cover BSC;
-# (3) extracts all transfer events between deployment and snapshot blocks (the last snapshot block is used to fetch logs only once and then use them from memory)
-# (4) replays transfers in order, maintains a running balance per address and takes a snapshot debit_from_addr(), credit_to_addr()
-# (5) counts addresses with positive remaining balances
-# (6) adds relevant columns with number of holders on a particular time to .xlxs file
+# (3) extracts all transfer events between deployment and snapshot blocks (the last snapshot block is used to fetch logs only once
+#     and then use them from memory);
+# (4) replays transfers in order, maintains a running balance per address and takes a snapshot debit_from_addr(), credit_to_addr();
+# (5) counts addresses with positive remaining balances;
+# (6) adds relevant columns with number of holders on a particular time to .xlxs file.
 
-# Etherscan API key is required for Ethereum, Arbitrum and Polygon tokens
+# Etherscan API key is required for Ethereum, Arbitrum and Polygon tokens.
 # MegaNode API key is required for BSC tokens (since Etherscan free plan does not support it) (https://docs.etherscan.io/supported-chains)
 
 

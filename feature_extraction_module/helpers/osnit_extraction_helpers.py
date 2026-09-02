@@ -18,6 +18,8 @@ from feature_extraction_module.helpers.config import SERP_API_KEY, SERP_BASE_URL
 from feature_extraction_module.helpers.general_extraction_helpers import query_dexscreener, query_moralis, query_coingecko, \
     SESSION
 
+
+# Date of Twitter / X rebranding
 # Reference: https://www.snapper.studio/blog/twitter-rebrands
 X_REBRAND_TIMESTAMP = int(datetime(2023, 6, 24, tzinfo=timezone.utc).timestamp())
 
@@ -176,8 +178,8 @@ def normalize_x_handle(raw_value):
 
 
 # Extract 'Google results for project website (first day)', 'Google results for project x profile (first days)',
-# and 'Google results for project x profile (duration/2)' for a live-queried token
-# trading_start_timestamp is the first trading activity (earliest pool/pair creation), consistent to window_start for price extraction
+# and 'Google results for project x profile (duration/2)' for a live-queried token.
+# trading_start_timestamp is the first trading activity (earliest pool/pair creation), consistent to window_start for price extraction.
 # If not found, use deployment_timestamp
 def get_osint_features_live(chain, token_address, trading_start_timestamp, window_end):
     print("Google result counts are calculating...")

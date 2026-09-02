@@ -1,4 +1,4 @@
-# Mocked environment for offline testing (replaces HTTP and XGBoost model) in order for tests to be deterministic
+# Mocked environment for offline testing (replaces HTTP calls and XGBoost model) in order for tests to be deterministic
 
 import json
 from datetime import datetime, timezone

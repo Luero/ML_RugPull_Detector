@@ -6,7 +6,7 @@
 from openpyxl import load_workbook
 from datetime import datetime
 
-# Load .xlsx file using OpenPyXL
+# Load .xlsx file using OpenPyXL.
 # Returns workbook and sheet from .xlcx file
 def load_file (file):
     workbook = load_workbook(file, data_only=True)

@@ -20,7 +20,7 @@ def test_index_page_is_served(client):
         assert element_id in response.data
     assert str(webapp.PREDICTION_THRESHOLD).encode() in response.data
     assert str(webapp.SUSPICION_THRESHOLD).encode() in response.data
-    # A band legend shows boundaries in %, matching how the probability is displayed
+    # A band legend shows boundaries in %
     assert str(round(webapp.SUSPICION_THRESHOLD * 100)).encode() + b'%' in response.data
     assert str(round(webapp.PREDICTION_THRESHOLD * 100)).encode() + b'%' in response.data
 
@@ -29,11 +29,11 @@ def test_index_page_is_served(client):
 @pytest.mark.parametrize('payload', [
     {'chain': 'SOLANA', 'token_address': VALID_ADDRESS_PATTERN},        # unsupported chain
     {'token_address': VALID_ADDRESS_PATTERN},                           # chain missing
-    {'chain': 'ETH', 'token_address': '0x123'},                 # address too short
-    {'chain': 'ETH', 'token_address': 'a' * 42},                # no 0x prefix
-    {'chain': 'ETH', 'token_address': 42},                      # address is not a string
-    {'chain': 'ETH'},                                           # address missing
-    None,                                                       # no input at all
+    {'chain': 'ETH', 'token_address': '0x123'},                         # address too short
+    {'chain': 'ETH', 'token_address': 'a' * 42},                        # no 0x prefix
+    {'chain': 'ETH', 'token_address': 42},                              # address is not a string
+    {'chain': 'ETH'},                                                   # address missing
+    None,                                                               # no input at all
 ])
 def test_start_prediction_rejects_invalid_input(client, payload):
     response = client.post('/api/predict', json=payload) if payload is not None else client.post('/api/predict')

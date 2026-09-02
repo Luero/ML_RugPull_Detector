@@ -1,6 +1,6 @@
 # Contains general helpers to extract features from different sources:
 # (1) general source-specific functions to construct relevant queries;
-# (2) general block-related functions to retrieve relevant blocks, their timestamps and other metadata;
+# (2) general block-related functions to retrieve relevant blocks, their timestamps and other metadata.
 
 # Sources used:
 # - Etherscan
@@ -45,6 +45,7 @@ def wait_for_rate_limit(provider, time_interval):
 
 
 # General function to query Etherscan's endpoints
+# Reference: https://docs.etherscan.io/introduction
 def query_etherscan(chain, params):
     data_not_found_messages = {'No records found', 'No data found', 'No transactions found'}
     params = params.copy()
@@ -61,7 +62,7 @@ def query_etherscan(chain, params):
             print(f"...HTTP error {response.status_code} for {params.get('action')}")
             return None
         data = response.json()
-        # If per-second limit still hit the call is retried after a pause
+        # If per-second limit still hit, the call is retried after a pause
         if data.get('message') == 'NOTOK' and 'rate limit' in str(data.get('result', '')).lower():
             if attempt < ETHERSCAN_MAX_RETRIES:
                 print(
@@ -86,6 +87,7 @@ def query_etherscan(chain, params):
 
 
 # General function to query MegaNode endpoints
+# https://docs.nodereal.io/reference/find-api-key-endpoint
 def query_meganode(method, params):
     wait_for_rate_limit('nodereal', NODEREAL_TIME_INTERVAL)
     payload = {'jsonrpc': '2.0', 'method': method, 'params': params, 'id': 1}
@@ -356,6 +358,7 @@ def get_last_activity_timestamp(chain, token_address, latest_block, deployment_b
 
 
 # Get a timestamp of the lates token transfer event for BSC tokens
+# Reference: https://docs.nodereal.io/reference/nr_getassettransfers
 def get_last_activity_timestamp_bsc(token_address, latest_block, deployment_block):
     if latest_block is None or deployment_block is None:
         return None

@@ -1,5 +1,5 @@
 # Predictor class takes pre-processors and a trained model at time of initialisation, then applies pre-processors to
-# incoming data (extracted features) and makes a prediction
+# incoming data (extracted features) and makes a prediction.
 
 import math
 
@@ -105,7 +105,7 @@ class Predictor:
 
 
     # Explain prediction with features that influence most to the result.
-    # Uses SHAP values computed for input row
+    # Uses SHAP values computed for an input row
     # Reference: https://xgboost.readthedocs.io/en/stable/prediction.html
     def get_risk_signals(self, model_input, features):
         contributions = self.model.get_booster().predict(xgb.DMatrix(model_input.to_numpy()), pred_contribs=True)[0]
