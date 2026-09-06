@@ -19,9 +19,9 @@ from feature_extraction_module.helpers.general_extraction_helpers import query_d
     SESSION
 
 
-# Date of Twitter / X rebranding
-# Reference: https://www.snapper.studio/blog/twitter-rebrands
-X_REBRAND_TIMESTAMP = int(datetime(2023, 6, 24, tzinfo=timezone.utc).timestamp())
+# Date when twitter.com domain fully migrated to x.com
+# Reference: https://9to5mac.com/2024/05/17/twitter-com-x-com/
+X_REBRAND_TIMESTAMP = int(datetime(2024, 5, 17, tzinfo=timezone.utc).timestamp())
 
 # Raw X/Twitter reference in any shape a source might return it, since it turns out shape is not consistent even within one source:
 # e.g. Moralis returned a bare handle for PEPE, but 'https://twitter.com/gnosisdao' for GNO

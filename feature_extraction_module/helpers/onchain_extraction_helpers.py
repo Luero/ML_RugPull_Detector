@@ -123,10 +123,10 @@ def get_number_of_transactions_bsc(token_address, deployment_block, latest_block
 
 # Extract 'Number of holders' feature for all supported chains.
 # For all chains except BSC uses Blockscout cached results
-def get_current_token_holder_count(chain, token_address):
+def get_token_holder_count(chain, token_address):
     print("Current token holders number is calculating...")
     if chain == 'BSC':
-        return get_current_token_holder_count_bsc(token_address)
+        return get_token_holder_count_bsc(token_address)
     counters = get_token_counters(chain, token_address)
     if counters is None:
         return None
@@ -139,7 +139,7 @@ def get_current_token_holder_count(chain, token_address):
 
 # Extract token holder count ('Number of holders') at the time of query for BSC tokens, uses NodeReal
 # Reference: https://docs.nodereal.io/reference/nr_gettokenholdercount
-def get_current_token_holder_count_bsc(token_address):
+def get_token_holder_count_bsc(token_address):
     result = query_meganode('nr_getTokenHolderCount', [token_address])
     if result is None or not isinstance(result.get('result'), str):
         print(f"...No NodeReal holder count for {token_address}")
@@ -153,7 +153,7 @@ def get_onchain_features_live(chain, token_address, deployment_block, deployment
     snapshots = get_holders_count_snapshots(chain, token_address, TIME_FOR_SNAPSHOTS_HOURS, deployment_block, deployment_timestamp, latest_block_timestamp)
     blockchain_type = get_blockchain_type(chain)
     number_of_transactions = get_number_of_transactions(chain, token_address, deployment_block, latest_block)
-    current_token_holder_count = get_current_token_holder_count(chain, token_address)
+    current_token_holder_count = get_token_holder_count(chain, token_address)
     features = {
         'project period (days)': project_period_days,
         'the number of Transactions': number_of_transactions,

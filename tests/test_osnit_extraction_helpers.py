@@ -10,8 +10,8 @@ from tests.mock_env import FakeResponse, FakeSession
 
 # Based on real SerpAPI response
 NO_RESULTS_ERROR = {'error': "Google hasn't returned any results for this query."}
-TRADING_START = int(datetime(2022, 3, 1, tzinfo=timezone.utc).timestamp())    # before Twitter rebranding
-WINDOW_END = int(datetime(2026, 3, 1, tzinfo=timezone.utc).timestamp())       # after Twitter (X) rebranding
+TRADING_START = int(datetime(2022, 3, 1, tzinfo=timezone.utc).timestamp())    # before migration of twitter.com to x.com
+WINDOW_END = int(datetime(2027, 3, 1, tzinfo=timezone.utc).timestamp())       # midpoint of the window falls after the migration
 
 
 # Tests X handle normalisation

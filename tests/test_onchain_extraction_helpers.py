@@ -98,7 +98,7 @@ def test_get_number_of_transactions_bsc(monkeypatch):
 def test_get_current_token_holder_count(monkeypatch, chain, payload, expected):
     monkeypatch.setattr(onchain, 'get_token_counters', lambda c, addr: payload)
     monkeypatch.setattr(onchain, 'query_meganode', lambda method, params: payload)
-    assert onchain.get_current_token_holder_count(chain, '0xabc') == expected
+    assert onchain.get_token_holder_count(chain, '0xabc') == expected
 
 
 # Tests Blockscout counters retry
