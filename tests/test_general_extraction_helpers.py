@@ -205,3 +205,24 @@ def test_is_token_live_threshold(hours_since_activity, expected):
     last_activity = None if hours_since_activity is None \
         else int(latest_block_timestamp.timestamp()) - hours_since_activity * 3600
     assert helpers.is_token_live(last_activity, latest_block_timestamp) is expected
+
+
+# Tests that a null 'result' from Etherscan proxy (just-mined block not visible yet) is retried once
+def test_get_block_timestamp_retries_null_result(monkeypatch):
+    responses = [{'result': None}, {'result': {'timestamp': hex(1700000000)}}]
+    monkeypatch.setattr(helpers, 'query_etherscan', lambda chain, params: responses.pop(0))
+    monkeypatch.setattr(helpers.time, 'sleep', lambda seconds: None)
+    assert helpers.get_block_timestamp('ETH', 123) == 1700000000
+
+
+# Tests that a null 'result' repeated after the retry returns None
+def test_get_block_timestamp_null_result_after_retry_returns_none(monkeypatch):
+    monkeypatch.setattr(helpers, 'query_etherscan', lambda chain, params: {'result': None})
+    monkeypatch.setattr(helpers.time, 'sleep', lambda seconds: None)
+    assert helpers.get_block_timestamp('ETH', 123) is None
+
+
+# Tests that a null 'result' for the latest block number is None
+def test_get_latest_block_eth_null_result_returns_none(monkeypatch):
+    monkeypatch.setattr(helpers, 'query_etherscan', lambda chain, params: {'result': None})
+    assert helpers.get_latest_block_eth('ETH') is None

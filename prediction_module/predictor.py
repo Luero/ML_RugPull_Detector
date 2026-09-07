@@ -2,14 +2,16 @@
 # incoming data (extracted features) and makes a prediction.
 
 import math
+import os
 
 import joblib
 import pandas as pd
 import xgboost as xgb
 
 # Paths to the model and pre-processor
-MODEL_PATH = 'prediction_module/models/xgboost_model.json'
-PREPROCESSING_PATH = 'prediction_module/models/preprocessing.joblib'
+MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
+MODEL_PATH = os.path.join(MODELS_DIR, 'xgboost_model.json')
+PREPROCESSING_PATH = os.path.join(MODELS_DIR, 'preprocessing.joblib')
 
 # Probability threshold to convert scam probability into class
 # 0.58 was found empirically by deriving a threshold that maximises F1 from cross-validated training predictions

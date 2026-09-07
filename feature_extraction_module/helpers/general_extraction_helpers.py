@@ -245,17 +245,25 @@ def get_deployment_block_and_timestamp_bsc(token_address):
 # https://docs.etherscan.io/api-reference/endpoint/ethblocknumber
 def get_latest_block_eth(chain):
     data = query_etherscan(chain, {'module': 'proxy', 'action': 'eth_blockNumber'})
-    if data is None:
+    if data is None or data.get('result') is None:
         return None
     return int(data['result'], 16)
 
 
-# Get a block's timestamp via Etherscan
+# Get a block's timestamp via Etherscan.
+# Proxy endpoints could return 'result': null for a just-mined block that is not visible yet on the serving node,
+# so a null result is retried once before treating it as a failure.
 # https://docs.etherscan.io/api-reference/endpoint/ethgetblockbynumber
-def get_block_timestamp(chain, block_number):
+def get_block_timestamp(chain, block_number, retried=False):
     data = query_etherscan(chain, {'module': 'proxy', 'action': 'eth_getBlockByNumber', 'tag': hex(block_number), 'boolean': 'false'})
     if data is None:
         return None
+    if data.get('result') is None:
+        if retried:
+            print(f"...No data for block {block_number} on {chain} after retry")
+            return None
+        time.sleep(ETHERSCAN_RETRY_DELAY_SECONDS)
+        return get_block_timestamp(chain, block_number, retried=True)
     return int(data['result']['timestamp'], 16)
 
 
