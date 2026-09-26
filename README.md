@@ -89,7 +89,7 @@ Note that each token costs up to 3 SerpApi searches and several minutes of API c
 - `feature_extraction_module`: a part of an app that extract features for a queried token live. Features extracted by this module match features that were used to train the model:
   - `feature_extractor.py` performs extraction of all features for one token;
   - `helpers` directory contains extraction helpers dedicated to different features and sources.
-- `tests`: 194 offline tests + `mock_env.py` (contains mocked structures) and `conftest.py` (contains shared fixtures).
+- `tests`: 197 offline tests + `mock_env.py` (contains mocked structures) and `conftest.py` (contains shared fixtures).
 - `research`: everything used to analyse data, train and tune the model; is not required to run the app:
   - `data`: dataset versions in .xlsx format; 
   - `data/SOURCE CODE` contains contract source code for all projects from the dataset in .txt files (named in line with original dataset row numbers);
